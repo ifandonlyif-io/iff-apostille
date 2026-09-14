@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="{{LANG}}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Sign agent artifacts, link optional ERC-8004 identity records, and explore experimental local ZK budget proofs.">
+    <meta name="color-scheme" content="dark light">
+    <link rel="icon" href="data:,">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src {{CONNECT}}; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <link rel="canonical" href="{{CANONICAL}}">
+    <link rel="stylesheet" href="{{ASSETS}}apostille.css{{ASSET_VERSION}}">
+    {{SITE_NAV_ASSETS}}
+    <title>{{TITLE}}</title>
+</head>
+<body data-mode="{{MODE}}" data-offline="{{OFFLINE}}" data-lang="{{LANG}}">
+    <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+    <header class="site-header">
+        <span class="wordmark">
+            <span class="wordmark-mark" aria-hidden="true">IFF</span>
+            <span><strong>Apostille</strong><small data-i18n="brandSub">Origin records</small></span>
+        </span>
+        <nav class="primary-nav" aria-label="Apostille">
+            <a href="/apostille/console" data-ap-link="/console" data-nav="console" data-i18n="navConsole">Workspace</a>
+            <a href="/apostille/verify" data-ap-link="/verify" data-nav="verify" data-i18n="navVerify">Verify</a>
+            <a href="/apostille/docs" data-ap-link="/docs" data-nav="docs" data-i18n="navDocs">Protocol</a>
+            <a href="/apostille/downloads" data-ap-link="/downloads" data-nav="downloads" data-i18n="navDownloads">Downloads</a>
+            <a href="/apostille/keys" data-ap-link="/keys" data-nav="keys" data-i18n="navKeys">Keys</a>
+        </nav>
+        <label class="locale-picker"><span class="sr-only" data-i18n="language">Language</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-4 4-4 14 0 18M12 3c4 4 4 14 0 18"/></svg>
+            <select id="locale-select" aria-label="Language">
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+                <option value="zh-hant">繁體中文</option>
+                <option value="zh-hans">简体中文</option>
+            </select>
+        </label>
+    </header>
+    {{SITE_NAV}}
+
+    <main id="main">
+        <div class="service-strip" id="service-strip" hidden role="status" aria-live="polite"></div>
+
+        <section class="view" data-view="home" aria-labelledby="home-title">
+            <div class="hero-grid">
+                <div class="hero-copy">
+                    <p class="eyebrow" data-i18n="heroEyebrow">Portable origin evidence · draft 0.1</p>
+                    <h1 id="home-title" data-i18n="heroTitle">A signature trail that travels with the work.</h1>
+                    <p class="hero-lede" data-i18n="heroLede">An agent signs a precise artifact. An administrator delegates that key. An issuer records the checks it actually performed. The recipient can verify the bundle without calling IFF.</p>
+                    <p class="boundary-note" data-i18n="heroBoundary">IFF signatures record origin checks. They are not a Hague Apostille and do not establish content truth or legal effect.</p>
+                </div>
+
+                <article class="certificate-hero" aria-label="Portable origin certificate example">
+                    <div class="certificate-spine" aria-hidden="true"></div>
+                    <div class="certificate-kicker"><span data-i18n="documentLabel">Origin certificate</span><code>0.1</code></div>
+                    <div class="certificate-title" data-i18n="documentTitle">Signed artifact manifest</div>
+                    <dl class="certificate-fields">
+                        <div><dt data-i18n="docArtifact">Artifact</dt><dd>report.json · application/json</dd></div>
+                        <div><dt data-i18n="docSigner">Source key</dt><dd><code>sha256:42c8…95b1</code></dd></div>
+                        <div><dt data-i18n="docScope">Scope</dt><dd data-i18n="docScopeValue">Origin signature checked</dd></div>
+                    </dl>
+                    <div class="digest-ribbon">
+                        <span data-i18n="docDigest">Original SHA-256</span>
+                        <code>7d2f 321b 6a3c 80ce 32bd 4e18 781f 02a9</code>
+                    </div>
+                    <div class="certificate-seal" aria-hidden="true"><span>Ed</span><strong>25519</strong></div>
+                    <p class="certificate-foot" data-i18n="docFoot">Portable JSON · embedded signatures · independently pinned trust</p>
+                </article>
+            </div>
+
+            <div class="truth-grid">
+                <article><span class="index">01</span><h2 data-i18n="stepSign">Sign the exact artifact</h2><p data-i18n="stepSignBody">The statement binds the file digest, byte count, media type, agent ID, and a fresh nonce.</p></article>
+                <article><span class="index">02</span><h2 data-i18n="stepAuthorize">Carry explicit authority</h2><p data-i18n="stepAuthorizeBody">Administrator delegation and agent acceptance are separate signatures with an audience and expiry.</p></article>
+                <article><span class="index">03</span><h2 data-i18n="stepVerify">Verify where you receive it</h2><p data-i18n="stepVerifyBody">The bundle is self-contained. Pin the issuer and key from a source you trust, then compare the original locally.</p></article>
+            </div>
+
+            <section class="profile-section" aria-labelledby="profiles-title">
+                <p data-i18n="profilesEyebrow" class="eyebrow">Optional profiles</p>
+                <h2 data-i18n="profilesTitle" id="profiles-title">Connect an agent identity. Share a budget result.</h2>
+                <div class="profile-grid">
+                    <article class="profile-card">
+                        <p data-i18n="erc8004Availability" class="profile-label">Private · when the service enables it</p>
+                        <h3 data-i18n="erc8004OverviewTitle">ERC-8004 identity binding</h3>
+                        <p data-i18n="erc8004OverviewBody">Link a registered agent to an ERC-8004 token with administrator and EOA wallet consent. Keep a private signed record of the owner observed by the issuer.</p>
+                        <a data-i18n="erc8004GuideLink" href="/apostille/docs#erc8004" data-ap-link="/docs#erc8004">How ERC-8004 binding works</a>
+                    </article>
+                    <article class="profile-card">
+                        <p data-i18n="zkAvailability" class="profile-label">Experimental · local Go SDK / CLI</p>
+                        <h3 data-i18n="zkOverviewTitle">ZK budget proof</h3>
+                        <p data-i18n="zkOverviewBody">Show another department that a signed list of expenses stays within its limit. Individual amounts and blinding stay in the source department; public metadata remains visible.</p>
+                        <a data-i18n="zkGuideLink" href="/apostille/docs#zk-budget" data-ap-link="/docs#zk-budget">How ZK budget proofs work</a>
+                    </article>
+                </div>
+            </section>
+
+            <section class="boundary-panel" aria-labelledby="boundary-title">
+                <div><p class="eyebrow" data-i18n="boundaryEyebrow">The claim stays narrow</p><h2 id="boundary-title" data-i18n="boundaryTitle">Provenance, stated one check at a time.</h2></div>
+                <div class="boundary-columns">
+                    <div><h3 data-i18n="establishes">The bundle can establish</h3><ul><li data-i18n="establish1">Artifact digest and byte size</li><li data-i18n="establish2">Control of the signing keys</li><li data-i18n="establish3">The issuer's recorded check and time</li></ul></div>
+                    <div><h3 data-i18n="doesNot">It does not establish</h3><ul><li data-i18n="not1">Whether the content is true</li><li data-i18n="not2">A secure execution environment</li><li data-i18n="not3">Current authority after an offline snapshot</li></ul></div>
+                </div>
+            </section>
+
+            <section class="planned" aria-labelledby="planned-title">
+                <p class="eyebrow" data-i18n="plannedEyebrow">Planned identity evidence</p>
+                <h2 id="planned-title" data-i18n="plannedTitle">Provider checks will remain separate facts.</h2>
+                <div class="provider-grid">
+                    <article><span>Coinbase</span><strong data-i18n="planned">Planned</strong><p data-i18n="coinbasePlan">Account verification evidence; not organization identity.</p></article>
+                    <article><span>LEI</span><strong data-i18n="planned">Planned</strong><p data-i18n="leiPlan">Registry entity status; not representative authority.</p></article>
+                    <article><span>vLEI</span><strong data-i18n="planned">Planned</strong><p data-i18n="vleiPlan">Credential-chain checks with explicit delegation.</p></article>
+                    <article><span>Cloudflare Wallets</span><strong data-i18n="reserved">Reserved</strong><p data-i18n="cloudflarePlan">Wallet name reserved for a possible future integration; no check is available.</p></article>
+                </div>
+                <p class="plain-limit" data-i18n="plannedLimit">Coinbase, LEI and vLEI checks remain planned; Cloudflare Wallets is reserved. There is no complete activity recorder, public Merkle log, payment flow or automatic chain anchoring.</p>
+            </section>
+        </section>
+
+        <section class="view workspace-view" data-view="console" aria-labelledby="console-title" hidden>
+            <div class="page-heading"><p class="eyebrow" data-i18n="workspaceEyebrow">Single-administrator workspace</p><h1 id="console-title" data-i18n="workspaceTitle">Keep keys local. Approve each publication.</h1><p data-i18n="workspaceLede">Private keys and the access token live only in this tab's memory. Download a key backup before leaving; reload requires importing it again.</p></div>
+
+            <section class="console-card" id="auth-panel">
+                <div class="card-heading"><span class="step-token">A</span><div><h2 data-i18n="adminKeyTitle">Administrator key</h2><p data-i18n="adminKeyBody">Generate a new key or import your JSON backup. Nothing is placed in browser storage.</p></div></div>
+                <div class="action-row">
+                    <button class="button primary" id="admin-generate" type="button" data-i18n="generateAdmin">Generate and download key</button>
+                    <label class="file-button"><span data-i18n="importAdmin">Import key backup</span><input id="admin-import" type="file" accept="application/json,.json"></label>
+                    <button class="button secondary" id="admin-login" type="button" disabled data-i18n="login">Register or sign in</button>
+                </div>
+                <div class="key-readout" id="admin-readout" hidden><span data-i18n="loadedKey">Loaded key</span><code id="admin-key-id"></code></div>
+                <p class="form-status" id="auth-status" role="status" aria-live="polite"></p>
+            </section>
+
+            <div id="workspace-panels" hidden>
+                <section class="console-card">
+                    <div class="card-heading"><span class="step-token">B</span><div><h2 data-i18n="profileTitle">Workspace profile</h2><p data-i18n="profileBody">Publishing the profile exposes only its public ID, name, and creation time. It does not publish keys or certificates.</p></div></div>
+                    <form id="workspace-form" class="field-grid">
+                        <label><span data-i18n="workspaceName">Workspace name</span><input id="workspace-name" maxlength="120" required></label>
+                        <label class="choice-line"><input id="workspace-public" type="checkbox"><span data-i18n="workspacePublic">Publish the self-declared organization profile</span></label>
+                        <button class="button primary" type="submit" data-i18n="saveProfile">Save profile</button>
+                    </form>
+                    <div class="profile-link" id="workspace-public-link" hidden></div>
+                    <p class="form-status" id="workspace-status" role="status" aria-live="polite"></p>
+                </section>
+
+                <section class="console-card">
+                    <div class="card-heading"><span class="step-token">C</span><div><h2 data-i18n="agentTitle">Agent signing key</h2><p data-i18n="agentBody">The administrator delegates one Ed25519 key; the agent signs its acceptance. Existing keys can be imported from a backup.</p></div></div>
+                    <div class="field-grid two">
+                        <label><span data-i18n="agentName">Agent name</span><input id="agent-name" maxlength="120" placeholder="Release agent"></label>
+                        <div class="action-row compact">
+                            <button class="button secondary" id="agent-generate" type="button" data-i18n="generateAgent">Generate and download agent key</button>
+                            <label class="file-button"><span data-i18n="importAgent">Import existing agent key</span><input id="agent-import" type="file" accept="application/json,.json"></label>
+                        </div>
+                    </div>
+                    <div class="key-readout" id="agent-readout" hidden><span data-i18n="loadedAgentKey">Loaded agent key</span><code id="agent-key-id"></code></div>
+                    <button class="button primary" id="agent-register" type="button" disabled data-i18n="registerAgent">Sign delegation and register agent</button>
+                    <p class="form-status" id="agent-status" role="status" aria-live="polite"></p>
+                    <div class="record-list" id="agent-list"></div>
+                </section>
+
+                <section class="console-card" id="erc8004-panel" hidden>
+                    <div class="card-heading"><span class="step-token">+</span><div><h2 data-i18n="erc8004Title">Private ERC-8004 identity binding</h2><p data-i18n="erc8004Body">Ask your EOA wallet to consent to one short-lived, read-only ownership check. The signed snapshot stays private and grants no payment authority.</p></div></div>
+                    <div class="field-grid two">
+                        <label><span data-i18n="erc8004Agent">Registered agent</span><select id="erc8004-agent"></select></label>
+                        <label><span data-i18n="erc8004Network">Configured registry</span><select id="erc8004-network"></select></label>
+                        <label><span data-i18n="erc8004Token">ERC-8004 token ID</span><input id="erc8004-token" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="78" placeholder="0"></label>
+                    </div>
+                    <div class="action-row">
+                        <button class="button primary" id="erc8004-create" type="button" disabled data-i18n="erc8004Create">Connect wallet and create private proof</button>
+                        <button class="button secondary" id="erc8004-load" type="button" disabled data-i18n="erc8004Load">Load last private proof</button>
+                    </div>
+                    <p class="revocation-note" data-i18n="erc8004Boundary">This checks the token owner observed by the issuer at one finalized block. It does not prove current ownership, organization identity, capabilities, or payment authority.</p>
+                    <p class="form-status" id="erc8004-status" role="status" aria-live="polite"></p>
+                    <div class="record-list" id="erc8004-record"></div>
+                </section>
+
+                <section class="console-card">
+                    <div class="card-heading"><span class="step-token">D</span><div><h2 data-i18n="issueTitle">Sign and issue</h2><p data-i18n="issueBody">Choose one original file. Only its signed manifest is submitted. Public issuance exposes the bundle, including signing keys and the artifact summary.</p></div></div>
+                    <label class="drop-field"><span data-i18n="chooseOriginal">Choose original file · 64 MiB maximum</span><input id="artifact-input" type="file"></label>
+                    <p class="file-summary" id="artifact-summary" data-i18n="noFile">No original selected.</p>
+                    <fieldset class="visibility-field"><legend data-i18n="visibility">Certificate visibility</legend><label><input type="radio" name="visibility" value="private" checked><span><strong data-i18n="private">Private</strong><small data-i18n="privateHelp">Available only in this authenticated workspace.</small></span></label><label><input type="radio" name="visibility" value="public"><span><strong data-i18n="public">Public</strong><small data-i18n="publicHelp">Anyone with the link can retrieve the signed bundle and embedded keys.</small></span></label></fieldset>
+                    <div class="action-row">
+                        <button class="button secondary" id="statement-create" type="button" disabled data-i18n="signStatement">Sign and download statement</button>
+                        <button class="button secondary" id="grant-create" type="button" disabled data-i18n="createGrant">Approve and download grant</button>
+                        <button class="button primary" id="certificate-submit" type="button" disabled data-i18n="issueCertificate">Issue certificate</button>
+                    </div>
+                    <p class="form-status" id="issue-status" role="status" aria-live="polite"></p>
+                    <div class="record-list" id="certificate-list"></div>
+                </section>
+            </div>
+        </section>
+
+        <section class="view verify-view" data-view="verify" aria-labelledby="verify-title" hidden>
+            <div class="page-heading"><p class="eyebrow" data-i18n="verifyEyebrow">Local verifier</p><h1 id="verify-title" data-i18n="verifyTitle">Inspect every claim before you trust the issuer.</h1><p data-i18n="verifyLede">Bundle, key policy, artifact comparison, and evaluation time stay in this browser. Offline mode never fetches status or a key directory.</p></div>
+            <p data-i18n="verifyToolsBoundary" class="profile-note">This browser verifier and its offline ZIP support Core 0.1 bundles and ERC-8004 binding snapshots. ZK budget proofs require the local Go SDK or CLI; the browser, JavaScript SDK and hosted API do not generate or verify them.</p>
+            <form id="verify-form" class="verify-shell">
+                <div class="verify-inputs">
+                    <label class="drop-field"><span data-i18n="bundleFile">Certificate bundle or ERC-8004 binding JSON</span><input id="verify-bundle" type="file" accept="application/json,.json" required></label>
+                    <label class="drop-field"><span data-i18n="artifactOptional">Original artifact · optional, 64 MiB maximum</span><input id="verify-artifact" type="file"></label>
+                    <label><span data-i18n="expectedIssuer">Expected issuer · exact URI</span><input id="verify-issuer" type="text" inputmode="url" autocomplete="off" placeholder="https://issuer.example/apostille"></label>
+                    <label><span data-i18n="trustedKey">Trusted key pin · full fingerprint</span><input id="verify-key" type="text" autocomplete="off" spellcheck="false" placeholder="sha256:…"></label>
+                    <label><span data-i18n="evaluationTime">Evaluation time · your local clock</span><input id="verify-time" type="datetime-local" step="1"></label>
+                    <button class="button primary" type="submit" data-i18n="verifyButton">Verify locally</button>
+                    <p class="form-status" id="verify-status" role="status" aria-live="polite"></p>
+                </div>
+                <div class="verification-result" id="verification-result" hidden tabindex="-1">
+                    <div class="result-head"><div><p class="eyebrow" data-i18n="resultEyebrow">Verification result</p><h2 id="result-title"></h2></div><span class="result-badge" id="result-badge"></span></div>
+                    <div class="check-list" id="check-list"></div>
+                    <dl class="result-meta"><div><dt id="result-id-label">certificate_id</dt><dd><code id="result-cert-id"></code></dd></div><div><dt>issuer</dt><dd><code id="result-issuer"></code></dd></div><div><dt>issuer_key_id</dt><dd><code id="result-key"></code></dd></div><div><dt id="result-digest-label">artifact_sha256</dt><dd><code id="result-digest"></code></dd></div></dl>
+                    <p class="revocation-note" id="result-note" data-i18n="revocationNote">Offline verification cannot know whether a key or delegation was revoked after this bundle was created.</p>
+                </div>
+            </form>
+        </section>
+
+        <section class="view info-view" data-view="docs" aria-labelledby="docs-title" hidden>
+            <div class="page-heading"><p class="eyebrow" data-i18n="docsEyebrow">Open draft protocol</p><h1 id="docs-title" data-i18n="docsTitle">Exact bytes, bounded claims, independent trust.</h1><p data-i18n="docsLede">Core 0.1 uses canonical JSON and Ed25519 signatures. Optional ERC-8004 and ZK budget profiles add separate checks, each with its own scope and trust policy.</p></div>
+            <section class="profile-guide" id="erc8004" aria-labelledby="erc8004-guide-title">
+                <p data-i18n="erc8004Availability" class="profile-label">Private · when the service enables it</p>
+                <h2 data-i18n="erc8004GuideTitle" id="erc8004-guide-title">ERC-8004: connect the agent to an identity record</h2>
+                <p data-i18n="erc8004GuideIntro">Use a private, detached binding to connect an Apostille agent with a token in an ERC-8004 registry. The signed record travels alongside the artifact bundle; Core 0.1 stays unchanged.</p>
+                <ol class="profile-steps">
+                    <li data-i18n="erc8004Step1">Register the agent in your workspace. If ERC-8004 is enabled, select a configured registry and enter the token ID in the existing workspace panel.</li>
+                    <li data-i18n="erc8004Step2">The administrator signs the binding request and the EOA owner signs a wallet consent message. The issuer reads ownership at a finalized block; no blockchain transaction is signed or sent.</li>
+                    <li data-i18n="erc8004Step3">Download the private signed snapshot. A recipient verifies it offline using an independently trusted issuer and key pin. The result records issuer_checked; it does not re-query the registry.</li>
+                </ol>
+                <p class="profile-note" data-i18n="erc8004Boundary">This checks the token owner observed by the issuer at one finalized block. It does not prove current ownership, organization identity, capabilities, or payment authority.</p>
+                <a class="profile-reference" href="/apostille/profiles/erc8004-binding/0.1" lang="en"><strong data-i18n="erc8004Spec">ERC-8004 binding profile 0.1</strong><span data-i18n="profileSpecMeta">English · specification</span></a>
+            </section>
+            <section class="profile-guide" id="zk-budget" aria-labelledby="zk-budget-guide-title">
+                <p data-i18n="zkAvailability" class="profile-label">Experimental · local Go SDK / CLI</p>
+                <h2 data-i18n="zkGuideTitle" id="zk-budget-guide-title">ZK budget: check a limit without sharing each amount</h2>
+                <p data-i18n="zkGuideIntro">For an internal budget review, the source department commits to a list of expenses and signs its public commitment manifest. The receiving department can check that the committed total stays within its chosen limit.</p>
+                <ol class="profile-steps">
+                    <li data-i18n="zkStep1">The source creates a private snapshot of 1–16 nonnegative integer amounts and signs the public manifest with its agent key.</li>
+                    <li data-i18n="zkStep2">The receiver chooses the request: snapshot, limit, audience, nonce and expiry. It independently selects the source key pin and verification key pin.</li>
+                    <li data-i18n="zkStep3">The source generates a proof locally. The receiver checks it offline with the Go SDK or CLI and records nonce use in its own workflow.</li>
+                </ol>
+                <dl class="profile-data">
+                    <div><dt data-i18n="zkPrivateTitle">Stays in the source department</dt><dd data-i18n="zkPrivateBody">Individual amounts, blinding, private snapshot and signing keys.</dd></div>
+                    <div><dt data-i18n="zkPublicTitle">Visible to the recipient</dt><dd data-i18n="zkPublicBody">The result, limit, scope, period, entry count, source key and snapshot hash. These can link records.</dd></div>
+                </dl>
+                <p data-i18n="zkLimits" class="profile-note">The proof covers only the committed list. It does not establish whether the source data is true or complete, current authorization or payment approval. Repeated limit queries can reveal information about the total.</p>
+                <p data-i18n="zkTrustBoundary" class="profile-note">The alpha uses a single-party development setup. An operator who retains its secret setup material could forge proofs; there is no production ceremony or external security audit yet.</p>
+                <div class="code-card">
+                    <p data-i18n="zkCommandsIntro">Build the local tool and inspect its circuit before preparing a proof:</p>
+                    <pre><code>make apostille-build
+./bin/apostille zk-circuit</code></pre>
+                </div>
+                <a class="profile-reference" href="/apostille/profiles/zk-budget/0.1" lang="en"><strong data-i18n="zkSpec">ZK budget profile 0.1 specification</strong><span data-i18n="profileSpecMeta">English · specification</span></a>
+            </section>
+            <h2 data-i18n="coreResources" class="resource-heading" id="core">Core 0.1 reference files</h2>
+            <div class="resource-grid"><a href="/apostille/spec/0.1/core.md"><strong data-i18n="coreSpec">Core 0.1 specification</strong><span>text/markdown</span></a><a href="/apostille/spec/0.1/schema.json"><strong data-i18n="schema">JSON Schema</strong><span>application/json</span></a><a href="/apostille/spec/0.1/vectors.json"><strong data-i18n="vectors">Known-answer vectors</strong><span>application/json</span></a><a href="/apostille/downloads/verifier.zip"><strong data-i18n="offlineKit">Offline verifier kit</strong><span>.zip</span></a></div>
+            <div class="code-card"><p data-i18n="cliIntro">Build the reference CLI from this repository:</p><pre><code>make apostille-build
+./bin/apostille verify --offline --bundle bundle.json \
+  --issuer https://issuer.example/apostille \
+  --key-id sha256:… --require-trusted</code></pre></div>
+        </section>
+
+        <section class="view info-view" data-view="downloads" aria-labelledby="downloads-title" hidden><div class="page-heading"><p class="eyebrow" data-i18n="downloadsEyebrow">Take verification with you</p><h1 id="downloads-title" data-i18n="downloadsTitle">A verifier with no service dependency.</h1><p data-i18n="downloadsLede">Download the HTML, JavaScript core, schema, specification, and test vectors. Serve the folder on localhost; it makes no Internet requests.</p></div><p data-i18n="verifyToolsBoundary" class="profile-note">This browser verifier and its offline ZIP support Core 0.1 bundles and ERC-8004 binding snapshots. ZK budget proofs require the local Go SDK or CLI; the browser, JavaScript SDK and hosted API do not generate or verify them.</p><a class="download-block" href="/apostille/downloads/verifier.zip"><span>ZIP · draft 0.1</span><strong data-i18n="downloadKit">Download offline verifier</strong><small data-i18n="downloadTrust">Bring the issuer URI and key fingerprint from an independent source.</small></a></section>
+
+        <section class="view info-view" data-view="keys" aria-labelledby="keys-title" hidden><div class="page-heading"><p class="eyebrow" data-i18n="keysEyebrow">Issuer key directory</p><h1 id="keys-title" data-i18n="keysTitle">A directory is a lookup, not a trust root.</h1><p data-i18n="keysLede">Compare a key fingerprint with an independently obtained policy before accepting it.</p></div><div class="key-directory" id="key-directory"><p data-i18n="loadingKeys">Loading current keys…</p></div></section>
+
+        <section class="view public-view" data-view="certificate" aria-labelledby="public-cert-title" hidden><div class="page-heading"><p class="eyebrow" data-i18n="publicCertificate">Public origin certificate</p><h1 id="public-cert-title" data-i18n="publicCertificateTitle">Read the signed bundle, then verify it yourself.</h1></div><div id="public-certificate-content" class="public-record"><p data-i18n="loadingCertificate">Loading certificate…</p></div></section>
+        <section class="view public-view" data-view="organization" aria-labelledby="public-org-title" hidden><div class="page-heading"><p class="eyebrow" data-i18n="publicOrganization">Public organization profile</p><h1 id="public-org-title" data-i18n="publicOrganizationTitle">Self-declared workspace identity.</h1><p data-i18n="publicOrganizationLede">This profile does not establish legal identity or representative authority.</p></div><div id="public-organization-content" class="public-record"><p data-i18n="loadingProfile">Loading profile…</p></div></section>
+    </main>
+
+    <footer><p data-i18n="footer">Apostille Protocol by IFF · draft 0.1 · provenance without a trust score</p><nav><a href="/monitor" data-iff-monitor data-i18n="iffHome">IFF monitor</a></nav></footer>
+    <script type="module" src="{{ASSETS}}apostille-page.mjs{{ASSET_VERSION}}"></script>
+</body>
+</html>

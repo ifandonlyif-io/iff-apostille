@@ -1,0 +1,55 @@
+{
+  "name": "@ifandonlyif/apostille",
+  "version": "0.1.0-alpha.1",
+  "description": "Issuer-neutral Apostille Core 0.1 signing, offline verification, and hosted API client",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    },
+    "./core": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.mjs"
+    }
+  },
+  "files": [
+    "dist/",
+    "examples/",
+    "LICENSE",
+    "README.md",
+    "spec/core-0.1.md",
+    "spec/erc8004-binding-0.1.md",
+    "spec/schema.json",
+    "spec/vectors.json"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "typecheck": "tsc -p test/tsconfig.json",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "sideEffects": false,
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ifandonlyif-io/iff-apostille.git",
+    "directory": "sdk/apostille-js"
+  },
+  "homepage": "https://ifandonlyif.io/apostille/docs",
+  "bugs": {
+    "url": "https://github.com/ifandonlyif-io/iff-apostille/issues"
+  }
+}

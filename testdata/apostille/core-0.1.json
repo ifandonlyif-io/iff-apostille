@@ -1,0 +1,60 @@
+{
+  "protocol": "https://ifandonlyif.io/apostille/spec/0.1",
+  "evaluation_time": "2026-09-13T01:00:00Z",
+  "issuer": "https://issuer.example/apostille",
+  "issuer_key_id": "sha256:b62e867fa2f33afe62d5d6b1642e1621d543307846b2a57b897e710919b76709",
+  "admin_public_key": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w",
+  "agent_public_key": "gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q",
+  "artifact": "hello\n",
+  "bundle": {
+    "protocol": "https://ifandonlyif.io/apostille/spec/0.1",
+    "statement": {
+      "protocol": "https://ifandonlyif.io/apostille/spec/0.1",
+      "kind": "origin-statement",
+      "payload": "eyJhZ2VudF9pZCI6ImFhYWFhYWFhLWFhYWEtNGFhYS04YWFhLWFhYWFhYWFhYWFhYSIsImFydGlmYWN0X21lZGlhX3R5cGUiOiJ0ZXh0L3BsYWluIiwiYXJ0aWZhY3Rfc2hhMjU2IjoiNTg5MWI1YjUyMmQ1ZGYwODZkMGZmMGIxMTBmYmQ5ZDIxYmI0ZmM3MTYzYWYzNGQwODI4NmEyZTg0NmY2YmUwMyIsImFydGlmYWN0X3NpemUiOiI2IiwiZGVsZWdhdGlvbl9zaGEyNTYiOiI5MjRkMDc5NjM1MGVlODllMmU1MjQzNDYwMjRjMWY5OThhMGE2OTFkODZmYzU4YTRhN2Y1ODNiMWY0ZTAwZGUxIiwiaXNzdWVkX2F0IjoiMjAyNi0wOS0xM1QwMDowMDowMFoiLCJpc3N1ZXIiOiJ1cm46YXBvc3RpbGxlOmtleTpzaGEyNTY6NmEzODAzZDVmMDU5OTAyYTFjNmRhZmJjOWJhNDcyOTIxMmY3Y2FhYzA4NjM0Y2MzYWU3NmIyNzUyOWYwMzgyNyIsImlzc3Vlcl9rZXlfaWQiOiJzaGEyNTY6NmEzODAzZDVmMDU5OTAyYTFjNmRhZmJjOWJhNDcyOTIxMmY3Y2FhYzA4NjM0Y2MzYWU3NmIyNzUyOWYwMzgyNyIsImtpbmQiOiJvcmlnaW4tc3RhdGVtZW50Iiwibm9uY2UiOiJiYmJiYmJiYi1iYmJiLTRiYmItOGJiYi1iYmJiYmJiYmJiYmIiLCJwcm90b2NvbCI6Imh0dHBzOi8vaWZhbmRvbmx5aWYuaW8vYXBvc3RpbGxlL3NwZWMvMC4xIn0",
+      "payload_sha256": "d1aa99c53bdd6c565dca768b8d853819f29bd18576fca867d75b2bb2d69e7861",
+      "signature": {
+        "algorithm": "Ed25519",
+        "key_id": "sha256:6a3803d5f059902a1c6dafbc9ba4729212f7caac08634cc3ae76b27529f03827",
+        "public_key": "gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q",
+        "value": "BZgfyxv5IvwZwKpUVbFbCjaIk9U_5gPcG3AiGXYFBUgSb4vmSYAynl8c2thAsilm-JOfVywCXOKd6QTO3yYFCQ"
+      }
+    },
+    "delegation": {
+      "protocol": "https://ifandonlyif.io/apostille/spec/0.1",
+      "kind": "agent-delegation",
+      "payload": "eyJhZ2VudF9pZCI6ImFhYWFhYWFhLWFhYWEtNGFhYS04YWFhLWFhYWFhYWFhYWFhYSIsImFnZW50X2tleV9pZCI6InNoYTI1Njo2YTM4MDNkNWYwNTk5MDJhMWM2ZGFmYmM5YmE0NzI5MjEyZjdjYWFjMDg2MzRjYzNhZTc2YjI3NTI5ZjAzODI3IiwiYWdlbnRfcHVibGljX2tleSI6ImdUbDNEcWg5RjE5V28xUm13MHgtek11TmlwRzA3amVpWGZZUFc0X0pzNVEiLCJleHBpcmVzX2F0IjoiMjAyNi0wOS0xNVQwMDowMDowMFoiLCJpc3N1ZWRfYXQiOiIyMDI2LTA5LTEzVDAwOjAwOjAwWiIsImlzc3VlciI6InVybjphcG9zdGlsbGU6a2V5OnNoYTI1NjozNDc1MGY5OGJkNTlmY2ZjOTQ2ZGE0NWFhYWJlOTMzYmUxNTRhNGI1MDk0ZTFjNGFiZjQyODY2NTA1ZjNjOTdlIiwiaXNzdWVyX2tleV9pZCI6InNoYTI1NjozNDc1MGY5OGJkNTlmY2ZjOTQ2ZGE0NWFhYWJlOTMzYmUxNTRhNGI1MDk0ZTFjNGFiZjQyODY2NTA1ZjNjOTdlIiwia2luZCI6ImFnZW50LWRlbGVnYXRpb24iLCJub3RfYmVmb3JlIjoiMjAyNi0wOS0xM1QwMDowMDowMFoiLCJwcm90b2NvbCI6Imh0dHBzOi8vaWZhbmRvbmx5aWYuaW8vYXBvc3RpbGxlL3NwZWMvMC4xIiwic2NvcGVzIjpbInNpZ25fb3JpZ2luX3N0YXRlbWVudCJdLCJzZXJ2aWNlX2F1ZGllbmNlIjoiaHR0cHM6Ly9pc3N1ZXIuZXhhbXBsZS9hcG9zdGlsbGUifQ",
+      "payload_sha256": "133bc30844abb620a54b5248a25e789013993c8be8ee6f9028677d42b68d5474",
+      "signature": {
+        "algorithm": "Ed25519",
+        "key_id": "sha256:34750f98bd59fcfc946da45aaabe933be154a4b5094e1c4abf42866505f3c97e",
+        "public_key": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w",
+        "value": "VjTmn3tJJ4j7k8cLg-FUjMeIC5s6YndzlQwGNxSoGbGk7DqKhW7TfEZ-2pG6b006iuakJEx4gnu_vgS3roG7CQ"
+      }
+    },
+    "acceptance": {
+      "protocol": "https://ifandonlyif.io/apostille/spec/0.1",
+      "kind": "agent-acceptance",
+      "payload": "eyJhZ2VudF9pZCI6ImFhYWFhYWFhLWFhYWEtNGFhYS04YWFhLWFhYWFhYWFhYWFhYSIsImRlbGVnYXRpb25fc2hhMjU2IjoiOTI0ZDA3OTYzNTBlZTg5ZTJlNTI0MzQ2MDI0YzFmOTk4YTBhNjkxZDg2ZmM1OGE0YTdmNTgzYjFmNGUwMGRlMSIsImlzc3VlZF9hdCI6IjIwMjYtMDktMTNUMDA6MDA6MDBaIiwiaXNzdWVyIjoidXJuOmFwb3N0aWxsZTprZXk6c2hhMjU2OjZhMzgwM2Q1ZjA1OTkwMmExYzZkYWZiYzliYTQ3MjkyMTJmN2NhYWMwODYzNGNjM2FlNzZiMjc1MjlmMDM4MjciLCJpc3N1ZXJfa2V5X2lkIjoic2hhMjU2OjZhMzgwM2Q1ZjA1OTkwMmExYzZkYWZiYzliYTQ3MjkyMTJmN2NhYWMwODYzNGNjM2FlNzZiMjc1MjlmMDM4MjciLCJraW5kIjoiYWdlbnQtYWNjZXB0YW5jZSIsInByb3RvY29sIjoiaHR0cHM6Ly9pZmFuZG9ubHlpZi5pby9hcG9zdGlsbGUvc3BlYy8wLjEifQ",
+      "payload_sha256": "fa40e526c81ec49d9f9f38a10630400ac0c306a795a82cf13360e7778c1bb3c6",
+      "signature": {
+        "algorithm": "Ed25519",
+        "key_id": "sha256:6a3803d5f059902a1c6dafbc9ba4729212f7caac08634cc3ae76b27529f03827",
+        "public_key": "gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q",
+        "value": "yj_XFSx_SID26d1U47fR1m-mvjan_DPnrNNYxAS_lLteOh9UP5LQl60-jyxsjFSGpRR23VulXBqTX7ucAAA1Cg"
+      }
+    },
+    "certificate": {
+      "protocol": "https://ifandonlyif.io/apostille/spec/0.1",
+      "kind": "origin-certificate",
+      "payload": "eyJhZ2VudF9iaW5kaW5nIjoiYWRtaW5fa2V5X2RlbGVnYXRpb24iLCJjZXJ0aWZpY2F0ZV9pZCI6ImNjY2NjY2NjLWNjY2MtNGNjYy04Y2NjLWNjY2NjY2NjY2NjYyIsImNvbnRlbnRfdHJ1dGgiOiJub3RfZXN0YWJsaXNoZWQiLCJkZWxlZ2F0aW9uX3NoYTI1NiI6IjkyNGQwNzk2MzUwZWU4OWUyZTUyNDM0NjAyNGMxZjk5OGEwYTY5MWQ4NmZjNThhNGE3ZjU4M2IxZjRlMDBkZTEiLCJleHBpcmVzX2F0IjoiMjAyNi0wOS0xNFQwMDowMTowMFoiLCJpc3N1ZWRfYXQiOiIyMDI2LTA5LTEzVDAwOjAxOjAwWiIsImlzc3VlciI6Imh0dHBzOi8vaXNzdWVyLmV4YW1wbGUvYXBvc3RpbGxlIiwiaXNzdWVyX2tleV9pZCI6InNoYTI1NjpiNjJlODY3ZmEyZjMzYWZlNjJkNWQ2YjE2NDJlMTYyMWQ1NDMzMDc4NDZiMmE1N2I4OTdlNzEwOTE5Yjc2NzA5Iiwia2luZCI6Im9yaWdpbi1jZXJ0aWZpY2F0ZSIsIm9yZ2FuaXphdGlvbl9iaW5kaW5nIjoidW5wcm92ZW4iLCJwcm90b2NvbCI6Imh0dHBzOi8vaWZhbmRvbmx5aWYuaW8vYXBvc3RpbGxlL3NwZWMvMC4xIiwic2lnbmF0dXJlX2NoZWNrIjoidmFsaWQiLCJzb3VyY2Vfa2V5X2lkIjoic2hhMjU2OjZhMzgwM2Q1ZjA1OTkwMmExYzZkYWZiYzliYTQ3MjkyMTJmN2NhYWMwODYzNGNjM2FlNzZiMjc1MjlmMDM4MjciLCJzdGF0ZW1lbnRfc2hhMjU2IjoiMjM4MTkzZDcwZDM4Njk4YTIyOGIyOWZiNWFmZGRmNGI1YWJiYmMyZDYwNzVhMTExMmVlYmZlZDFjMWZiNzAzMyJ9",
+      "payload_sha256": "a3420595966852b0d3114f36a82e5bf6a010be5fcaef1af75a78feb6e0ad3f24",
+      "signature": {
+        "algorithm": "Ed25519",
+        "key_id": "sha256:b62e867fa2f33afe62d5d6b1642e1621d543307846b2a57b897e710919b76709",
+        "public_key": "7UkoxijRwsbq6QM4kFmVYSlZJzpcY_k2NsFGFKyHN9E",
+        "value": "G-MDciXShqWNq0uqMw10TA8C4y3WFSQdm5W5zlu8jyxGqrw7sE8Rlz_OTUf4uqkE-vTrodJI9Dxfiefdqls6AQ"
+      }
+    }
+  }
+}
