@@ -30,5 +30,6 @@ jobs:
           test -z "$(gofmt -l apostille cmd util)"
       - run: make check
       - run: make security
+      - run: make fuzz
       - name: Package without publishing
         run: npm pack ./sdk/apostille-js --pack-destination ./dist

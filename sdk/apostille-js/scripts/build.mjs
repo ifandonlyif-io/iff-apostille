@@ -28,3 +28,4 @@ await copyFile(join(repositoryRoot, "docs/apostille/spec/core-0.1.md"), join(spe
 await copyFile(join(repositoryRoot, "docs/apostille/spec/erc8004-binding-0.1.md"), join(specRoot, "erc8004-binding-0.1.md"));
 await copyFile(join(repositoryRoot, "web/apostille-0.1.schema.json"), join(specRoot, "schema.json"));
 await copyFile(join(repositoryRoot, "testdata/apostille/core-0.1.json"), join(specRoot, "vectors.json"));
+await copyFile(join(repositoryRoot, "testdata/apostille/core-0.1-cases.json"), join(specRoot, "vector-cases.json"));

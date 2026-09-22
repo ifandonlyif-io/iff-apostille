@@ -156,8 +156,13 @@ func StrictJSON(raw []byte, dst any) error {
 	return nil
 }
 func validateJSON(raw []byte) error {
-	// The JCS parser rejects unpaired Unicode escapes and duplicate properties;
-	// the token pass additionally bounds recursion and rejects numeric tokens.
+	// Surrogate escapes are checked on the raw text, before any decoder can
+	// replace an unpaired one with U+FFFD. The JCS parser rejects duplicate
+	// properties; the token pass additionally bounds recursion and rejects
+	// numeric tokens.
+	if err := pairedSurrogateEscapes(raw); err != nil {
+		return err
+	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
 	var walk func(int) error
