@@ -1,0 +1,572 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ifandonlyif.io/apostille/spec/0.2/schema.json",
+  "title": "Apostille Core 0.2 draft bundle",
+  "description": "Structural schema only. Reject duplicate keys, numbers, invalid Unicode, oversize or noncanonical signed payloads before crypto/semantic verification. Definitions also describe decoded payloads; base64 is not automatically validated by this schema.",
+  "allOf": [
+    {
+      "$ref": "#/$defs/bundle"
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "keyID": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "publicKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "issuer": {
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^(https://|urn:)[!-~]+$",
+      "description": "Exact identifier; the exact identifier grammar in core-0.2.md applies; no normalization."
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "delegationDigest": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/digest"
+        },
+        {
+          "const": ""
+        }
+      ]
+    },
+    "signature": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519"
+        },
+        "key_id": {
+          "$ref": "#/$defs/keyID"
+        },
+        "public_key": {
+          "$ref": "#/$defs/publicKey"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$"
+        }
+      },
+      "required": [
+        "algorithm",
+        "key_id",
+        "public_key",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "origin-statement": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "kind": {
+          "const": "origin-statement"
+        },
+        "issuer": {
+          "$ref": "#/$defs/issuer"
+        },
+        "issuer_key_id": {
+          "$ref": "#/$defs/keyID"
+        },
+        "issued_at": {
+          "$ref": "#/$defs/time"
+        },
+        "agent_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "delegation_sha256": {
+          "$ref": "#/$defs/delegationDigest"
+        },
+        "artifact_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "artifact_size": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$"
+        },
+        "artifact_media_type": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[^\\r\\n\\u0000]*/[^\\r\\n\\u0000]*$",
+          "description": "Maximum 128 UTF-8 bytes, not characters."
+        },
+        "nonce": {
+          "$ref": "#/$defs/uuid"
+        }
+      },
+      "required": [
+        "protocol",
+        "kind",
+        "issuer",
+        "issuer_key_id",
+        "issued_at",
+        "agent_id",
+        "delegation_sha256",
+        "artifact_sha256",
+        "artifact_size",
+        "artifact_media_type",
+        "nonce"
+      ],
+      "additionalProperties": false
+    },
+    "origin-statementEnvelope": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "kind": {
+          "const": "origin-statement"
+        },
+        "payload": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "maxLength": 262144,
+          "description": "Canonical unpadded base64url of exact canonical origin-statement payload. Decoded length <=131072 bytes."
+        },
+        "payload_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "signature": {
+          "$ref": "#/$defs/signature"
+        }
+      },
+      "required": [
+        "protocol",
+        "kind",
+        "payload",
+        "payload_sha256",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "agent-delegation": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "kind": {
+          "const": "agent-delegation"
+        },
+        "issuer": {
+          "$ref": "#/$defs/issuer"
+        },
+        "issuer_key_id": {
+          "$ref": "#/$defs/keyID"
+        },
+        "issued_at": {
+          "$ref": "#/$defs/time"
+        },
+        "agent_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "agent_key_id": {
+          "$ref": "#/$defs/keyID"
+        },
+        "agent_public_key": {
+          "$ref": "#/$defs/publicKey"
+        },
+        "service_audience": {
+          "$ref": "#/$defs/issuer"
+        },
+        "not_before": {
+          "$ref": "#/$defs/time"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/time"
+        },
+        "scopes": {
+          "const": [
+            "sign_origin_statement"
+          ]
+        }
+      },
+      "required": [
+        "protocol",
+        "kind",
+        "issuer",
+        "issuer_key_id",
+        "issued_at",
+        "agent_id",
+        "agent_key_id",
+        "agent_public_key",
+        "service_audience",
+        "not_before",
+        "expires_at",
+        "scopes"
+      ],
+      "additionalProperties": false
+    },
+    "agent-delegationEnvelope": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "kind": {
+          "const": "agent-delegation"
+        },
+        "payload": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "maxLength": 262144,
+          "description": "Canonical unpadded base64url of exact canonical agent-delegation payload. Decoded length <=131072 bytes."
+        },
+        "payload_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "signature": {
+          "$ref": "#/$defs/signature"
+        }
+      },
+      "required": [
+        "protocol",
+        "kind",
+        "payload",
+        "payload_sha256",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "agent-acceptance": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "kind": {
+          "const": "agent-acceptance"
+        },
+        "issuer": {
+          "$ref": "#/$defs/issuer"
+        },
+        "issuer_key_id": {
+          "$ref": "#/$defs/keyID"
+        },
+        "issued_at": {
+          "$ref": "#/$defs/time"
+        },
+        "agent_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "delegation_sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "required": [
+        "protocol",
+        "kind",
+        "issuer",
+        "issuer_key_id",
+        "issued_at",
+        "agent_id",
+        "delegation_sha256"
+      ],
+      "additionalProperties": false
+    },
+    "agent-acceptanceEnvelope": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "kind": {
+          "const": "agent-acceptance"
+        },
+        "payload": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "maxLength": 262144,
+          "description": "Canonical unpadded base64url of exact canonical agent-acceptance payload. Decoded length <=131072 bytes."
+        },
+        "payload_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "signature": {
+          "$ref": "#/$defs/signature"
+        }
+      },
+      "required": [
+        "protocol",
+        "kind",
+        "payload",
+        "payload_sha256",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "publication-grant": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "kind": {
+          "const": "publication-grant"
+        },
+        "issuer": {
+          "$ref": "#/$defs/issuer"
+        },
+        "issuer_key_id": {
+          "$ref": "#/$defs/keyID"
+        },
+        "issued_at": {
+          "$ref": "#/$defs/time"
+        },
+        "statement_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "delegation_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "service_audience": {
+          "$ref": "#/$defs/issuer"
+        },
+        "visibility": {
+          "enum": [
+            "private",
+            "public"
+          ]
+        },
+        "purpose": {
+          "const": "issue_origin_certificate"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/time"
+        },
+        "nonce": {
+          "$ref": "#/$defs/uuid"
+        }
+      },
+      "required": [
+        "protocol",
+        "kind",
+        "issuer",
+        "issuer_key_id",
+        "issued_at",
+        "statement_sha256",
+        "delegation_sha256",
+        "service_audience",
+        "visibility",
+        "purpose",
+        "expires_at",
+        "nonce"
+      ],
+      "additionalProperties": false
+    },
+    "publication-grantEnvelope": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "kind": {
+          "const": "publication-grant"
+        },
+        "payload": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "maxLength": 262144,
+          "description": "Canonical unpadded base64url of exact canonical publication-grant payload. Decoded length <=131072 bytes."
+        },
+        "payload_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "signature": {
+          "$ref": "#/$defs/signature"
+        }
+      },
+      "required": [
+        "protocol",
+        "kind",
+        "payload",
+        "payload_sha256",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "origin-certificate": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "kind": {
+          "const": "origin-certificate"
+        },
+        "issuer": {
+          "$ref": "#/$defs/issuer"
+        },
+        "issuer_key_id": {
+          "$ref": "#/$defs/keyID"
+        },
+        "issued_at": {
+          "$ref": "#/$defs/time"
+        },
+        "certificate_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "statement_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "delegation_sha256": {
+          "$ref": "#/$defs/delegationDigest"
+        },
+        "source_key_id": {
+          "$ref": "#/$defs/keyID"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/time"
+        },
+        "signature_check": {
+          "const": "valid"
+        },
+        "agent_binding": {
+          "enum": [
+            "admin_key_delegation",
+            "not_provided"
+          ]
+        },
+        "organization_binding": {
+          "const": "unproven"
+        },
+        "content_truth": {
+          "const": "not_established"
+        }
+      },
+      "required": [
+        "protocol",
+        "kind",
+        "issuer",
+        "issuer_key_id",
+        "issued_at",
+        "certificate_id",
+        "statement_sha256",
+        "delegation_sha256",
+        "source_key_id",
+        "expires_at",
+        "signature_check",
+        "agent_binding",
+        "organization_binding",
+        "content_truth"
+      ],
+      "additionalProperties": false
+    },
+    "origin-certificateEnvelope": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "kind": {
+          "const": "origin-certificate"
+        },
+        "payload": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "maxLength": 262144,
+          "description": "Canonical unpadded base64url of exact canonical origin-certificate payload. Decoded length <=131072 bytes."
+        },
+        "payload_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "signature": {
+          "$ref": "#/$defs/signature"
+        }
+      },
+      "required": [
+        "protocol",
+        "kind",
+        "payload",
+        "payload_sha256",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "registration": {
+      "type": "object",
+      "properties": {
+        "delegation": {
+          "$ref": "#/$defs/agent-delegationEnvelope"
+        },
+        "acceptance": {
+          "$ref": "#/$defs/agent-acceptanceEnvelope"
+        }
+      },
+      "required": [
+        "delegation",
+        "acceptance"
+      ],
+      "additionalProperties": false
+    },
+    "bundle": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "https://ifandonlyif.io/apostille/spec/0.2"
+        },
+        "statement": {
+          "$ref": "#/$defs/origin-statementEnvelope"
+        },
+        "delegation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/agent-delegationEnvelope"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceptance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/agent-acceptanceEnvelope"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "certificate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/origin-certificateEnvelope"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "protocol",
+        "statement",
+        "delegation",
+        "acceptance",
+        "certificate"
+      ],
+      "additionalProperties": false,
+      "description": "Delegation/acceptance presence, exact hashes, time intervals and signer relationships require semantic verification."
+    }
+  }
+}

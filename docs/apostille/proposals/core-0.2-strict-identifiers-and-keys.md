@@ -1,8 +1,10 @@
 # Proposal — Core 0.2: exact identifier grammar and strict Ed25519
 
 Status: proposal drafted 2026-09-21, reviewed and accepted 2026-09-22 as the
-basis for [the implementation plan](core-0.2-implementation-plan.md). Nothing
-here is implemented yet; the plan's status table says what has landed. Core 0.1,
+basis for [the implementation plan](core-0.2-implementation-plan.md); the
+normative text is [`spec/core-0.2.md`](../spec/core-0.2.md), accepted the same
+day, and governs where the two differ. Nothing is implemented yet; the plan's
+status table says what has landed. Core 0.1,
 its known-answer vector and its case file stay exactly as published; a 0.1
 signature is never reinterpreted under these rules.
 

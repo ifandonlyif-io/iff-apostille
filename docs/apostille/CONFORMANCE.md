@@ -68,8 +68,8 @@ Core 0.1 does not say how to treat small-order Ed25519 public keys. Go and Node
 accept them, so a degenerate key admits a signature valid for any message; some
 libraries refuse such keys. Trust never comes from an embedded key. Identifier
 syntax and degenerate keys change what a verifier accepts, so they are addressed
-by a proposed new version rather than by reinterpreting 0.1: see
-[the Core 0.2 proposal](proposals/core-0.2-strict-identifiers-and-keys.md).
+by Core 0.2 rather than by reinterpreting 0.1: see the
+[Core 0.2 specification](spec/core-0.2.md), accepted but not yet implemented.
 
 Go previously accepted two consecutive unpaired surrogate escapes and decoded
 them to U+FFFD. The specification already required rejection and the browser

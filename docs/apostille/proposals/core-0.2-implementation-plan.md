@@ -16,8 +16,8 @@ possible so the upstream copy stays a file copy.
 
 | Phase | Scope | Status | Note |
 | --- | --- | --- | --- |
-| 0 | Land the 0.1 conformance work this plan builds on | 🟡 partial | Code complete and verified on branch `test/conformance-cases-fuzz` (2026-09-22); not committed; not upstreamed to `iff-trust-oracle` |
-| 1 | Normative `spec/core-0.2.md` + `web/apostille-0.2.schema.json` | ⬜ pending | Needs Phase 0 landed; user approves the normative text |
+| 0 | Land the 0.1 conformance work this plan builds on | 🟡 partial | Committed on `test/conformance-cases-fuzz` as `df6d4c5` (fix + tests) and `0686385` (docs), 2026-09-22; upstream to `iff-trust-oracle` awaits authorization |
+| 1 | Normative `spec/core-0.2.md` + `web/apostille-0.2.schema.json` | ✅ DONE | Accepted 2026-09-22 after review (no findings); normative for 0.2 artifacts, no implementation yet |
 | 2 | Go: profiles, identifier grammar, strict Ed25519, no-mixing, explicit-version signing, 0.2 vectors | ⬜ pending | Needs Phase 1 |
 | 3 | JS: same rules, vendored curve library, consumers for 0.2 vectors, Go/JS differential at 0.2 | ⬜ pending | Needs Phase 2 vectors; user confirms the vendored library |
 | 4 | CLI, browser verifier UI, docs, notices | ⬜ pending | Needs Phases 2 and 3; new UI strings need reviewed translations |
@@ -309,7 +309,19 @@ Upstream list: `apostille/surrogates.go`, `apostille/surrogates_test.go`,
 `docs/apostille/proposals/`. Go import paths and the node relative imports
 follow the upstream tree.
 
-Outcome: (append when landed)
+Outcome (2026-09-22): landed in this repository as two commits on
+`test/conformance-cases-fuzz`, `df6d4c5` (surrogate fix with the conformance
+case file, fuzz targets and differential suite) and `0686385` (documentation
+and the Core 0.2 proposal and plan). Verified on the committed tree: `make
+check` (0 failures, 0 skips, Node present), `make security`, `make fuzz` (3 × 30 s,
+no crasher), `go mod tidy` clean in all three modules, isolation script pass.
+Deviation from the original scope: the plan review found that an honest key can
+carry a valid identity-`R` signature (`S = k·a`), contradicting an earlier
+claim; the construction was added as differential edge case
+`ed25519/genuine-key-r-identity-valid-s` (Go and Node both accept at 0.1) and
+C5 and gotcha 11 were corrected before landing. Not done: the upstream copy to
+`iff-trust-oracle`, which needs the user's authorization; the list above is
+current.
 
 ### Phase 1 — Normative specification and schema
 
@@ -327,7 +339,22 @@ the specification. Size: medium; main-model writing.
 Acceptance: the user approves the normative text. Every rule in it is testable by
 a vector planned in C5. No sentence changes a 0.1 rule.
 
-Outcome: (append when landed)
+Outcome (2026-09-22): `spec/core-0.2.md` and `web/apostille-0.2.schema.json`
+accepted as normative for 0.2 artifacts after the user's technical review with
+no findings. The schema is the 0.1 schema with `$id`, title, eleven protocol
+constants and one description changed, verified by diff. The specification's
+IPv6 examples and 32 identifier verdicts were checked against executable
+versions of its own rules; the user re-ran the Go/JS differential (0 failures,
+0 skips). Four points beyond the recorded decisions were confirmed: a URN `nid`
+is lowercase-only as a profile tightening over RFC 8141, with no conversion;
+RFC 2119 keywords are used; a receiver that requires strict verification MUST
+refuse 0.1 via its version policy, historical 0.1 verdicts unchanged; the
+registration key check is a MUST for 0.2 registrations and a SHOULD for logins
+in the general text, while IFF's hosted policy enforces both per decision 9.
+Unchanged 0.1 sections are incorporated by reference; the small-order
+encodings are informative. Not done here: vectors and implementation (Phases
+2 to 4), so no implementation may claim 0.2 conformance yet. The start of
+Phase 2 is a separate scheduling decision for the user.
 
 ### Phase 2 — Go reference implementation and 0.2 vectors
 
@@ -419,8 +446,10 @@ Outcome: (append when landed)
 
 Everything that needs the user, in one place.
 
-- [ ] Phase 0: commit the branch (or say how), and apply or authorize the upstream list.
-- [ ] Phase 1: approve `docs/apostille/spec/core-0.2.md` as normative.
+- [x] Phase 0: commit the branch — done 2026-09-22 (`df6d4c5`, `0686385`).
+- [ ] Phase 0: apply or authorize the upstream list to `iff-trust-oracle`.
+- [x] Phase 1: approve `docs/apostille/spec/core-0.2.md` as normative — done 2026-09-22.
+- [ ] Decide when Phase 2 starts (a scheduling decision the user tied to business validation).
 - [ ] Phase 3: confirm the JS curve library to vendor (name, version, license).
 - [ ] Phase 4: review new UI strings in all four locales (Simplified Chinese is a reviewed dictionary).
 - [ ] Phase 5: schedule the `iff-trust-oracle` work and the key inventory; record the deployment date here.
