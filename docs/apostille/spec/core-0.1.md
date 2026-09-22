@@ -26,9 +26,13 @@ fields or dynamically loaded adapters in 0.1.
 
 ## Encoding and signature
 
-Inputs are UTF-8 JSON, at most 262144 bytes, with depth at most 24. Reject duplicate
+Inputs are UTF-8 JSON, at most 262144 bytes, with depth at most 24. The root of a
+bundle, an envelope and a signed payload is a JSON object. Reject duplicate
 properties (including escaped-equivalent names), malformed UTF-8, unpaired
-surrogates, trailing JSON, and **all JSON numeric values**. Exact quantities are
+surrogates, trailing JSON, and **all JSON numeric values**. A surrogate escape is
+paired only when a high surrogate escape is immediately followed by a low
+surrogate escape, in member names and values alike; test the escapes as written,
+before a decoder can substitute U+FFFD. Exact quantities are
 decimal strings. No Unicode normalization is performed. Payload fields are all
 required and never null. Optional bundle attachments are explicit nulls.
 
@@ -199,4 +203,5 @@ adapters, recorder, anchoring and signed status have reserved roadmap space only
 - RFC 8785: https://www.rfc-editor.org/rfc/rfc8785.html
 - RFC 8032: https://www.rfc-editor.org/rfc/rfc8032.html
 - Executable Go/browser vector: `testdata/apostille/core-0.1.json`.
+- Machine-readable accept/reject cases: `testdata/apostille/core-0.1-cases.json`.
 - Conformance and limitations: `docs/apostille/CONFORMANCE.md`.

@@ -12,7 +12,7 @@ CLI release or Go module release is claimed by this preview.
 
 | Component | Source | What it provides |
 | --- | --- | --- |
-| Core 0.1 | [spec](docs/apostille/spec/core-0.1.md), [schema](web/apostille-0.1.schema.json), [vectors](testdata/apostille/core-0.1.json) | Exact bytes and positive/negative verification cases |
+| Core 0.1 | [spec](docs/apostille/spec/core-0.1.md), [schema](web/apostille-0.1.schema.json), [vectors](testdata/apostille/core-0.1.json), [cases](testdata/apostille/core-0.1-cases.json) | Exact bytes and positive/negative verification cases |
 | Go | [core](apostille/), [API client](apostille/client/) | Offline signing/verification; explicitly invoked hosted calls |
 | JavaScript / TypeScript | [SDK](sdk/apostille-js/) | Offline default import and separate `/client` entry |
 | Local CLI | [commands](docs/apostille/CLI.md) | Key generation, signing, local issuance and verification |
