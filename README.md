@@ -6,14 +6,35 @@ it performed. A recipient can verify the resulting bundle locally, without an
 IFF account or an Internet connection. You can use the SDK or implement the
 published specification and conformance vectors yourself.
 
-**Source preview / alpha.** Core protocol `0.1` and SDK package
-`0.1.0-alpha.1` are different version namespaces. No npm package, downloadable
-CLI release or Go module release is claimed by this preview.
+**Alpha.** Core protocol `0.1`, the Go module release `v0.1.0-alpha.1` and the
+SDK package `0.1.0-alpha.1` are different version namespaces. The Go root module
+(packages `apostille`, `apostille/client`, `util`) is released as
+`v0.1.0-alpha.1`; the CLI and ZK modules are built from this checkout until
+their own module tags exist. No npm package and no CLI binaries are published.
+Core 0.2 is an accepted specification with no implementation or vectors yet;
+see the [roadmap](#roadmap).
+
+## Who uses what
+
+- **Recipients of a bundle** verify it in the browser verifier served by the
+  hosted service or from this repository, or with the local CLI. Neither needs
+  an IFF account, a key lookup or a network connection.
+- **Go developers** import the released module:
+
+  ```sh
+  go get github.com/ifandonlyif-io/iff-apostille@v0.1.0-alpha.1
+  ```
+
+  API reference: [pkg.go.dev](https://pkg.go.dev/github.com/ifandonlyif-io/iff-apostille@v0.1.0-alpha.1/apostille).
+  Integration guide: [docs/apostille/SDK.md](docs/apostille/SDK.md).
+- **JavaScript developers** pack the SDK from this checkout (see below); a
+  registry release is planned separately.
+- **Reviewers and independent implementers** start from the specification,
+  schema and conformance cases, and from the tagged source on GitHub.
 
 | Component | Source | What it provides |
 | --- | --- | --- |
 | Core 0.1 | [spec](docs/apostille/spec/core-0.1.md), [schema](web/apostille-0.1.schema.json), [vectors](testdata/apostille/core-0.1.json), [cases](testdata/apostille/core-0.1-cases.json) | Exact bytes and positive/negative verification cases |
-| Core 0.2 | [spec](docs/apostille/spec/core-0.2.md), [schema](web/apostille-0.2.schema.json) | Accepted profile: exact identifier grammar, strict Ed25519, versioned namespace; no implementation or vectors yet |
 | Go | [core](apostille/), [API client](apostille/client/) | Offline signing/verification; explicitly invoked hosted calls |
 | JavaScript / TypeScript | [SDK](sdk/apostille-js/) | Offline default import and separate `/client` entry |
 | Local CLI | [commands](docs/apostille/CLI.md) | Key generation, signing, local issuance and verification |
@@ -51,6 +72,16 @@ See [SDK examples](sdk/apostille-js/README.md), [Go integration](docs/apostille/
 and [release instructions](docs/apostille/RELEASE.md). Nested CLI/ZK modules have
 local `replace` directives for source builds: do not use `go install ...@version`
 or copy only one nested module from this preview.
+
+## Roadmap
+
+Core 0.2 ([specification](docs/apostille/spec/core-0.2.md),
+[schema](web/apostille-0.2.schema.json)) adds an exact identifier grammar, strict
+Ed25519 verification and a versioned namespace. It is accepted but has no
+reference implementation or conformance vectors; nothing may claim 0.2
+conformance yet. The [implementation plan](docs/apostille/proposals/core-0.2-implementation-plan.md)
+tracks its status. An npm release of the JS SDK and prebuilt CLI binaries are
+also planned; neither is part of `v0.1.0-alpha.1`.
 
 ## What verification means
 

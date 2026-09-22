@@ -1,4 +1,5 @@
 /bin/
+/cmd/apostille/apostille
 /dist/
 /output/
 node_modules/

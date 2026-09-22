@@ -1,8 +1,12 @@
 # Source alpha release preparation
 
-This is a source preview, not a claim that tags, a Go module, a CLI binary release
-or an npm package are already published. Preserve protocol/profile identifiers
-and vector bytes independently of software package versions.
+`v0.1.0-alpha.1` is the first tag of the root Go module (packages `apostille`,
+`apostille/client`, `util`). The nested CLI and ZK modules get their own tags by
+the procedure in "Later installable modules" below; until then they build from
+a full checkout. No CLI binary release and no npm package are published.
+Preserve protocol/profile identifiers and vector bytes independently of software
+package versions: Core stays `0.1`, and the accepted Core 0.2 specification has
+no implementation, which every release note must say.
 
 ## Validate a clean source checkout
 
