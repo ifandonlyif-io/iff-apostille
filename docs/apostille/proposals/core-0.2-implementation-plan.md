@@ -16,7 +16,7 @@ possible so the upstream copy stays a file copy.
 
 | Phase | Scope | Status | Note |
 | --- | --- | --- | --- |
-| 0 | Land the 0.1 conformance work this plan builds on | 🟡 partial | Committed on `test/conformance-cases-fuzz` as `df6d4c5` (fix + tests) and `0686385` (docs), 2026-09-22; upstream to `iff-trust-oracle` awaits authorization |
+| 0 | Land the 0.1 conformance work this plan builds on | ✅ DONE | On `main` and released as `v0.1.0-alpha.1` (2026-09-22); the hosted service consumes that tag, so nothing is upstreamed by copy any more |
 | 1 | Normative `spec/core-0.2.md` + `web/apostille-0.2.schema.json` | ✅ DONE | Accepted 2026-09-22 after review (no findings); normative for 0.2 artifacts, no implementation yet |
 | 2 | Go: profiles, identifier grammar, strict Ed25519, no-mixing, explicit-version signing, 0.2 vectors | ⬜ pending | Needs Phase 1 |
 | 3 | JS: same rules, vendored curve library, consumers for 0.2 vectors, Go/JS differential at 0.2 | ⬜ pending | Needs Phase 2 vectors; user confirms the vendored library |
@@ -244,10 +244,10 @@ the code may have moved.
    once the user agrees.
 6. **Node interop and differential tests skip silently when `node` is missing.**
    Never accept a green run with skips; `docs/apostille/RELEASE.md` says so.
-7. **Existing source and test files are byte-identical to `iff-trust-oracle`.**
-   Put new code in new files; when an existing file must change, keep the diff
-   minimal and list it for upstreaming at the end of the phase. Never write into
-   the upstream checkout unasked.
+7. **The hosted service consumes this repository as a released module.** A
+   change here reaches `iff-trust-oracle` only through a new tag and a pin bump
+   there (plus its `make apostille-assets-sync` for served browser files). Do
+   not copy files into that checkout, and never write into it unasked.
 8. **Browser UI strings live in one four-locale dictionary** (`web/apostille-messages.mjs`);
    a test requires every key in all four, and Simplified Chinese is a reviewed
    static dictionary. A new string needs reviewed translations before the test
@@ -319,9 +319,10 @@ Deviation from the original scope: the plan review found that an honest key can
 carry a valid identity-`R` signature (`S = k·a`), contradicting an earlier
 claim; the construction was added as differential edge case
 `ed25519/genuine-key-r-identity-valid-s` (Go and Node both accept at 0.1) and
-C5 and gotcha 11 were corrected before landing. Not done: the upstream copy to
-`iff-trust-oracle`, which needs the user's authorization; the list above is
-current.
+C5 and gotcha 11 were corrected before landing. The upstream copy became unnecessary the same day: the work was
+released as `v0.1.0-alpha.1` (root, `apostille/zkbudget`, `cmd/apostille`) and
+`iff-trust-oracle` now requires that module and syncs the served browser assets
+from it, so the "upstream list" above is historical.
 
 ### Phase 1 — Normative specification and schema
 
@@ -447,7 +448,6 @@ Outcome: (append when landed)
 Everything that needs the user, in one place.
 
 - [x] Phase 0: commit the branch — done 2026-09-22 (`df6d4c5`, `0686385`).
-- [ ] Phase 0: apply or authorize the upstream list to `iff-trust-oracle`.
 - [x] Phase 1: approve `docs/apostille/spec/core-0.2.md` as normative — done 2026-09-22.
 - [ ] Decide when Phase 2 starts (a scheduling decision the user tied to business validation).
 - [ ] Phase 3: confirm the JS curve library to vendor (name, version, license).

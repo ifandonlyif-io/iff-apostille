@@ -18,8 +18,10 @@ At launch, name the maintainers who actually accept review/release duties in
 GitHub access settings. Do not advertise a council, independent membership,
 service-level commitment or recognized-issuer list that does not exist.
 
-After the initial extraction, this repository should become the source of truth
-for the exported protocol/tooling. The hosted application should consume pinned,
-reviewed releases. Until that migration is complete, upstream each shared fix
-explicitly and compare conformance vectors; never run an automatic overwrite
-of community contributions from a private snapshot.
+This repository is the source of truth for the protocol, the Go and JavaScript
+implementations, the CLI and the experimental ZK module. Since `v0.1.0-alpha.1`
+the hosted application consumes the released Go module at a pinned version and
+copies the served browser assets from that module with a checked script; it
+keeps no copy of this code. A change reaches the hosted service only through a
+new tag here and a reviewed pin bump there, never by copying files in either
+direction.

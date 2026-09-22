@@ -65,7 +65,8 @@ and tag `apostille/zkbudget/<version>`; in the CLI module pin both, tidy, test,
 commit and tag `cmd/apostille/<version>`; then verify `go get` of the root and
 `go install` of the CLI from a clean module cache through the public proxy.
 Never invent dependency sums; let `go mod tidy` fetch them. Keep a LICENSE in
-each module. See [Go multi-module release rules](https://go.dev/doc/modules/managing-source).
+each module. Downstream, the hosted service bumps its `go.mod` pin and runs its
+asset sync for the served browser modules; it does not copy files from here. See [Go multi-module release rules](https://go.dev/doc/modules/managing-source).
 
 The proposed npm name is `@ifandonlyif/apostille`. Verify scope/package ownership
 before first publication. Use an explicit alpha dist-tag and public access.
