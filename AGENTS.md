@@ -18,5 +18,7 @@ ZK is experimental and local, with independently selected setup/source pins and
 receiver policy. No hosted proving, automatic publication or chain transaction.
 
 Build/test root, apostille/zkbudget and cmd/apostille separately with GOWORK=off.
-Do not add go.work or merge gnark dependencies into the root module. Use
+The nested modules pin the released root module; a root change is visible to them
+only after a new root tag, or through a temporary local replace that is never
+committed. Do not add go.work or merge gnark dependencies into the root module. Use
 make check and make security. Keep original MIT attribution and dependency notices.

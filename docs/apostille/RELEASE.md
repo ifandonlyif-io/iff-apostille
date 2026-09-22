@@ -1,9 +1,9 @@
 # Source alpha release preparation
 
-`v0.1.0-alpha.1` is the first tag of the root Go module (packages `apostille`,
-`apostille/client`, `util`). The nested CLI and ZK modules get their own tags by
-the procedure in "Later installable modules" below; until then they build from
-a full checkout. No CLI binary release and no npm package are published.
+`v0.1.0-alpha.1` is the first release: root Go module `v0.1.0-alpha.1`
+(packages `apostille`, `apostille/client`, `util`), `apostille/zkbudget/v0.1.0-alpha.1`
+and `cmd/apostille/v0.1.0-alpha.1`, tagged in that order on 2026-09-22 after CI
+passed on `d2c72c8`. No CLI binary release and no npm package are published.
 Preserve protocol/profile identifiers and vector bytes independently of software
 package versions: Core stays `0.1`, and the accepted Core 0.2 specification has
 no implementation, which every release note must say.
@@ -49,20 +49,23 @@ Archive hashes identify bytes, not the trustworthiness of the issuer or build.
    Include all modules and fixtures in the source archive. Do not describe this
    as independently audited/reproduced or as a deployed-binary attestation.
 
-## Later installable modules and registry packages
+## Nested modules and later releases
 
-Nested CLI/ZK modules currently use local replacements and `v0.0.0` source pins.
-A downstream module does not inherit replacements, and `go install ...@version`
-rejects replace-dependent command modules. Source builds use the complete
-checkout; those install commands are deliberately not advertised.
+The nested modules pin released root versions and have no `replace` directive,
+which is what lets `go install ...@version` work. The cost is that a change in
+the root module is not seen by `apostille/zkbudget` or `cmd/apostille` until a
+new root tag exists. To test a nested module against uncommitted root changes,
+add `replace github.com/ifandonlyif-io/iff-apostille => ../..` (and the ZK
+module's counterpart) locally and never commit it; CI's tidy check rejects a
+committed replace by way of the changed `go.mod`.
 
-For remotely installable modules, publish the root first, pin its actual version
-in the ZK module, remove that local replacement, tidy/test in a clean consumer,
-and tag `apostille/zkbudget/v0.1.0-alpha.1`. Then pin both actual versions in the
-CLI module, remove its replacements, tidy/test and tag
-`cmd/apostille/v0.1.0-alpha.1`. Re-test byte compatibility at each step. These are
-separate reviewed commits after remote tags exist; never invent dependency sums.
-Keep a LICENSE in each module. See [Go multi-module release rules](https://go.dev/doc/modules/managing-source).
+Release order for the next version: tag the root after CI passes; in the ZK
+module pin the new root version, tidy, test against the downloaded root, commit
+and tag `apostille/zkbudget/<version>`; in the CLI module pin both, tidy, test,
+commit and tag `cmd/apostille/<version>`; then verify `go get` of the root and
+`go install` of the CLI from a clean module cache through the public proxy.
+Never invent dependency sums; let `go mod tidy` fetch them. Keep a LICENSE in
+each module. See [Go multi-module release rules](https://go.dev/doc/modules/managing-source).
 
 The proposed npm name is `@ifandonlyif/apostille`. Verify scope/package ownership
 before first publication. Use an explicit alpha dist-tag and public access.

@@ -242,11 +242,12 @@ Go 1.26.6 toolchain. Use `make apostille-build` to build the CLI and
 root `go test ./...` does not traverse nested modules; CI runs them explicitly.
 Do not add a shared `go.work`, which would combine module version selection.
 
-These modules are available from this checkout, with local `replace` directives;
-no module release is advertised. An external prototype must explicitly replace
-both `github.com/ifandonlyif-io/iff-apostille` and
-`github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget` with their local
-checkout directories. A dependency's `replace` directives are not inherited.
+Both modules are released: `apostille/zkbudget/v0.1.0-alpha.1` pins the root
+module `v0.1.0-alpha.1`, and `cmd/apostille/v0.1.0-alpha.1` pins both. An external
+prototype requires `github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget`
+at that tag; no `replace` directive is needed. Inside this checkout the nested
+modules also build against the released root, not the working tree, so a root
+change reaches them only at the next root tag.
 
 Importing `zkbudget` disables **gnark's process-wide logger** once during package
 initialization. This keeps compile/prove/verify progress out of SDK stdout/JSON,

@@ -10,7 +10,9 @@ vectors. An incompatible format needs a new version/domain; never reinterpret
 an existing `0.1` signature. Passing a JSON schema is not cryptographic conformance.
 
 Run `make check` and `make security`. Core, CLI and experimental ZK have separate
-Go modules; use `GOWORK=off`, never a combined workspace. Keep the shared Go/JS
+Go modules; use `GOWORK=off`, never a combined workspace. The CLI and ZK modules
+pin the released root module, so a root change reaches them at the next root tag
+(RELEASE.md describes the local workaround). Keep the shared Go/JS
 vectors unchanged for packaging-only changes. Changes to the browser verifier
 also need a local browser check with external networking unavailable.
 

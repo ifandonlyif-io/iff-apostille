@@ -9,8 +9,9 @@ published specification and conformance vectors yourself.
 **Alpha.** Core protocol `0.1`, the Go module release `v0.1.0-alpha.1` and the
 SDK package `0.1.0-alpha.1` are different version namespaces. The Go root module
 (packages `apostille`, `apostille/client`, `util`) is released as
-`v0.1.0-alpha.1`; the CLI and ZK modules are built from this checkout until
-their own module tags exist. No npm package and no CLI binaries are published.
+`v0.1.0-alpha.1`, and the CLI and ZK modules carry the tags
+`cmd/apostille/v0.1.0-alpha.1` and `apostille/zkbudget/v0.1.0-alpha.1`. No npm
+package and no CLI binaries are published.
 Core 0.2 is an accepted specification with no implementation or vectors yet;
 see the [roadmap](#roadmap).
 
@@ -18,7 +19,12 @@ see the [roadmap](#roadmap).
 
 - **Recipients of a bundle** verify it in the browser verifier served by the
   hosted service or from this repository, or with the local CLI. Neither needs
-  an IFF account, a key lookup or a network connection.
+  an IFF account, a key lookup or a network connection. With a Go toolchain:
+
+  ```sh
+  go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.1.0-alpha.1
+  apostille verify --offline --bundle bundle.json --issuer <exact issuer> --key-id <pinned key id>
+  ```
 - **Go developers** import the released module:
 
   ```sh
@@ -69,9 +75,9 @@ npm pack ./sdk/apostille-js --pack-destination ./dist
 ```
 
 See [SDK examples](sdk/apostille-js/README.md), [Go integration](docs/apostille/SDK.md)
-and [release instructions](docs/apostille/RELEASE.md). Nested CLI/ZK modules have
-local `replace` directives for source builds: do not use `go install ...@version`
-or copy only one nested module from this preview.
+and [release instructions](docs/apostille/RELEASE.md). The CLI and ZK modules
+pin the released root module rather than this checkout; a root change reaches
+them at the next root tag (see RELEASE.md for the local development workaround).
 
 ## Roadmap
 

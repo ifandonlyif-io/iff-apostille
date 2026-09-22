@@ -2,11 +2,17 @@
 
 The `apostille` command creates and verifies issuer-neutral Apostille 0.1 artifacts using local files. It does not contact IFF, upload the original artifact, or make any network request.
 
-Build it from the repository root:
+Install the released module, or build it from the repository root:
 
 ```bash
-make apostille-build
+go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.1.0-alpha.1
+# or, from a checkout:
+make apostille-build   # writes bin/apostille
 ```
+
+`go install` fetches the tagged CLI, root and ZK modules from the Go module
+proxy and compiles them locally; no binary is downloaded. Prebuilt binaries are
+not published.
 
 For the experimental local ZK budget profile, see the [ZK walkthrough](ZK.md).
 `zk-setup`, `zk-circuit`, `zk-snapshot`, `zk-request`, `zk-prove`, and `zk-verify` create and
