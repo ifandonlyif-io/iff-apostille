@@ -28,6 +28,10 @@ github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3 h1:LMLX+LgTNWpfvCBdFe
 github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3/go.mod h1:jl5iWTm0/hd5PjEYEOuwAJ57L/CibdZfrqZ5XA5GrCk=
 github.com/holiman/uint256 v1.3.2 h1:a9EgMPSC1AAaj1SZL5zIQD3WbwTuHrMGOerLjGmM/TA=
 github.com/holiman/uint256 v1.3.2/go.mod h1:EOMSn4q6Nyt9P6efbI3bueV4e1b3dGlUCXeiRV4ng7E=
+github.com/ifandonlyif-io/iff-apostille v0.1.0-alpha.1 h1:ksbBV3PSDxIjDfs96UMDUUMQvQf19mGqFtf8e4q05gk=
+github.com/ifandonlyif-io/iff-apostille v0.1.0-alpha.1/go.mod h1:yj1H2oDcCZYheN/ZEGP6Z7lz03o5TYetoF4mhxIVLHA=
+github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget v0.1.0-alpha.1 h1:J9h6qc/RLDDm1GzAAMyKRtG76ewlUYIzzLSQrFCT8VA=
+github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget v0.1.0-alpha.1/go.mod h1:W9YdOd90ba38+xO0NnZ/sgecT9dojJ9299QaboZndtI=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=

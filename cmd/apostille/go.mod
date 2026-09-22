@@ -5,8 +5,8 @@ go 1.25.7
 toolchain go1.26.6
 
 require (
-	github.com/ifandonlyif-io/iff-apostille v0.0.0
-	github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget v0.0.0
+	github.com/ifandonlyif-io/iff-apostille v0.1.0-alpha.1
+	github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget v0.1.0-alpha.1
 	github.com/stretchr/testify v1.11.1
 )
 
@@ -30,7 +30,3 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/ifandonlyif-io/iff-apostille => ../..
-
-replace github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget => ../../apostille/zkbudget
