@@ -7,7 +7,7 @@ toolchain go1.26.6
 require (
 	github.com/consensys/gnark v0.16.3
 	github.com/consensys/gnark-crypto v0.21.0
-	github.com/ifandonlyif-io/iff-apostille v0.0.0
+	github.com/ifandonlyif-io/iff-apostille v0.1.0-alpha.1
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.11.1
 )
@@ -31,5 +31,3 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/ifandonlyif-io/iff-apostille => ../..
