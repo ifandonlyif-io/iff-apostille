@@ -1,5 +1,9 @@
 # Apostille by IFF
 
+[English](README.md) · [日本語](README.ja.md) · [繁體中文](README.zh-hant.md) · [简体中文](README.zh-hans.md)
+
+[Website](https://ifandonlyif.io/apostille) · [Downloads and installation](https://ifandonlyif.io/apostille/downloads) · [Alpha release](https://github.com/ifandonlyif-io/iff-apostille/releases/tag/v0.1.0-alpha.1)
+
 Portable, issuer-neutral signatures for agent artifacts. An agent signs a file
 manifest, an administrator delegates its key, and an issuer records the checks
 it performed. A recipient can verify the resulting bundle locally, without an
@@ -15,6 +19,10 @@ package and no CLI binaries are published.
 Core 0.2 is an accepted specification with no implementation or vectors yet;
 see the [roadmap](#roadmap).
 
+This release includes 215 shared conformance cases, Go/JavaScript differential
+tests, fuzz tests and a fix for unpaired Unicode surrogate handling. The hosted
+IFF service consumes the pinned public Go release.
+
 ## Who uses what
 
 - **Recipients of a bundle** verify it in the browser verifier served by the
@@ -23,8 +31,11 @@ see the [roadmap](#roadmap).
 
   ```sh
   go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.1.0-alpha.1
-  apostille verify --offline --bundle bundle.json --issuer <exact issuer> --key-id <pinned key id>
   ```
+
+  Add `GOBIN` (or `GOPATH/bin` when unset) to `PATH`. Follow the
+  [CLI verification guide](docs/apostille/CLI.md) with your independently chosen
+  issuer/key pins; use `--require-trusted` when a trust mismatch must fail.
 - **Go developers** import the released module:
 
   ```sh
@@ -79,6 +90,8 @@ and [release instructions](docs/apostille/RELEASE.md). The CLI and ZK modules
 pin the released root module rather than this checkout; a root change reaches
 them at the next root tag (see RELEASE.md for the local development workaround).
 
+<a id="roadmap"></a>
+
 ## Roadmap
 
 Core 0.2 ([specification](docs/apostille/spec/core-0.2.md),
@@ -107,6 +120,14 @@ The hosted API implementation, tenant database, issuer credentials and productio
 deployment configuration are outside this source release. The [API contract](docs/apostille/API.md)
 documents the client integration surface; it is not a self-hosting package.
 These producer records do not feed IFF's x402 monitor, transparency log or reputation.
+
+## Related IFF projects
+
+[iff-x402-transparency](https://github.com/ifandonlyif-io/iff-x402-transparency)
+provides the public verification surface for x402 observations, transparency logs
+and Service Receipts. [IFF Monitor](https://ifandonlyif.io/monitor) is the hosted
+endpoint monitoring service. Apostille signs producer artifacts; the claims and
+trust policies of these products remain separate.
 
 ## Participate
 
