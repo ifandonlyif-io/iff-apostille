@@ -41,7 +41,7 @@ verifier:
 
 security:
 	@for module in . apostille/zkbudget cmd/apostille; do \
-		GOWORK=off go -C "$$module" run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./... || exit; \
+		GOWORK=off go -C "$$module" run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./... || exit; \
 	done
 
 # Go accepts one fuzz target per invocation. Seeds already run under `core`;
