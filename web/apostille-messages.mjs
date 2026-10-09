@@ -68,9 +68,10 @@ const en = {
     mldsaDisclosure: "ML-DSA-65 in the browser uses the vendored @noble/post-quantum library, which states that it is not independently audited and does not claim constant-time signing. For administrator keys, the command-line tool (Go standard library) will be the recommended path once a CLI release supports Core 0.3.",
     hostedPending: "The hosted service does not accept Core 0.3 yet, so sign-in, registration and submission are unavailable for ML-DSA-65 keys. Local signing and offline verification still work.",
     requirePQ: "Require post-quantum signatures (Core 0.3 only)",
-    requirePQBinding: "Post-quantum signatures are required, but an ERC-8004 binding snapshot is signed with Ed25519.",
+    requirePQBinding: "Post-quantum signatures are required, but this ERC-8004 binding snapshot (profile 0.1) is signed with Ed25519.",
     protocolPostQuantum: "The signatures in this bundle use ML-DSA-65 (FIPS 204), a post-quantum algorithm. Only the signatures are post-quantum; trust decisions and the other checks are unchanged.",
     protocolClassical: "The signatures here use Ed25519, which is not post-quantum.",
+    protocolPostQuantumBinding: "The administrator and issuer signatures in this binding use ML-DSA-65 (FIPS 204), a post-quantum algorithm. The wallet owner's consent is an Ethereum secp256k1 signature and is not post-quantum.",
 };
 
 const ja = {
@@ -146,6 +147,7 @@ const ja = {
     requirePQBinding: "耐量子署名が必須ですが、ERC-8004 binding snapshot は Ed25519 で署名されています。",
     protocolPostQuantum: "この bundle の署名は、耐量子アルゴリズムの ML-DSA-65（FIPS 204）を使っています。耐量子なのは署名のみで、信頼の判断とその他の確認は変わりません。",
     protocolClassical: "この署名は Ed25519 を使っており、耐量子ではありません。",
+    protocolPostQuantumBinding: "この binding の管理者署名と発行者署名は、耐量子アルゴリズムの ML-DSA-65（FIPS 204）を使っています。ウォレット所有者の同意は Ethereum の secp256k1 署名であり、耐量子ではありません。",
 };
 
 const zhHant = {
@@ -222,6 +224,7 @@ const zhHant = {
     requirePQBinding: "已要求後量子簽章，但 ERC-8004 binding snapshot 使用 Ed25519 簽署。",
     protocolPostQuantum: "此 bundle 的簽章使用 ML-DSA-65（FIPS 204），屬於後量子演算法。僅簽章為後量子；信任判斷與其他檢查不變。",
     protocolClassical: "此簽章使用 Ed25519，不屬於後量子演算法。",
+    protocolPostQuantumBinding: "此 binding 的管理者與發行者簽章使用 ML-DSA-65（FIPS 204），屬於後量子演算法。錢包擁有者的同意是 Ethereum secp256k1 簽章，不屬於後量子。",
 };
 
 const zhHans = {
@@ -480,6 +483,7 @@ const zhHans = {
     requirePQBinding: "已要求后量子签名，但 ERC-8004 binding snapshot 使用 Ed25519 签名。",
     protocolPostQuantum: "此 bundle 的签名使用 ML-DSA-65（FIPS 204），属于后量子算法。仅签名为后量子；信任判断与其他检查不变。",
     protocolClassical: "此签名使用 Ed25519，不属于后量子算法。",
+    protocolPostQuantumBinding: "此 binding 的管理者与发行者签名使用 ML-DSA-65（FIPS 204），属于后量子算法。钱包所有者的同意是 Ethereum secp256k1 签名，不属于后量子。",
 };
 
 export const messages = Object.freeze({

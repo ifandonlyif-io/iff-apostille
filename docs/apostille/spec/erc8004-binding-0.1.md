@@ -1,5 +1,7 @@
 # ERC-8004 binding profile 0.1
 
+For Core 0.3 registrations with ML-DSA-65 signatures, see [ERC-8004 binding profile 0.3](erc8004-binding-0.3.md); a 0.1 document is never reinterpreted under 0.3.
+
 This optional profile links an existing Apostille agent registration to an ERC-8004 Identity Registry token. It is a separate document, not a Core 0.1 extension: no Core payload, signature, bundle, organization claim, x402 evidence, reputation, or anchor changes. The API stores it privately. A public workspace does not publish it.
 
 Profile: `https://ifandonlyif.io/apostille/profiles/erc8004-binding/0.1`.

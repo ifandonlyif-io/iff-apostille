@@ -38,7 +38,7 @@ Agent が生成したファイルに、持ち運べる issuer 非依存の署名
 | JavaScript / TypeScript | [SDK](sdk/apostille-js/) | オフラインの default import と、独立した `/client` entry |
 | ローカル CLI | [コマンド](docs/apostille/CLI.md) | 鍵生成、署名、ローカル発行、検証 |
 | Browser verifier | [ソース](web/)、`make verifier` | 4 言語のローカル検証。鍵の問い合わせ、RPC、telemetry は行いません |
-| ERC-8004 profile | [仕様](docs/apostille/spec/erc8004-binding-0.1.md) | Issuer が確認した過去の所有権を示す、独立した証拠 |
+| ERC-8004 profile | [0.1](docs/apostille/spec/erc8004-binding-0.1.md)、[0.3](docs/apostille/spec/erc8004-binding-0.3.md)、[0.3 vector](testdata/apostille/erc8004-binding-0.3.json) | Issuer が確認した過去の所有権を示す、独立した証拠。0.3 は Core 0.3 の registration に ML-DSA-65 で署名 |
 | 実験的 ZK | [ガイド](docs/apostille/ZK.md)、[module](apostille/zkbudget/) | Commitment 済み予算の条件をローカル検証。Go/CLI のみ |
 
 ## ソースから試す
@@ -68,7 +68,7 @@ npm pack ./sdk/apostille-js --pack-destination ./dist
 
 ## ロードマップ
 
-Core 0.2（[仕様](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）は、厳密な識別子文法、厳格な Ed25519 検証、バージョン付き namespace を追加します。Core 0.3（[仕様](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）はその文法を維持し、ML-DSA-65（FIPS 204）で署名します。Go と JavaScript の reference implementation、vectors、適合性テストケースはこのソースツリーにあり、`v0.3.0-alpha.1` で公開済みです。browser verifier は 3 つのバージョンすべてを検証し、CLI も対応しています（`--protocol 0.1|0.2|0.3`、`keygen --algorithm ml-dsa-65`、`verify --accept-protocol`）。hosted service と hosted API client はまだ 0.2 と 0.3 に対応していません。切り替えが告知されるまで、署名の既定バージョンは Core 0.1 のままです。0.2 と 0.3 は明示的に選ぶオプションです。状態は[0.2](docs/apostille/proposals/core-0.2-implementation-plan.md)と[0.3](docs/apostille/proposals/core-0.3-implementation-plan.md)の実装計画で管理しています。JS SDK の npm 公開とビルド済み CLI binary も予定していますが、いずれも `v0.3.0-alpha.1` には含まれません。
+Core 0.2（[仕様](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）は、厳密な識別子文法、厳格な Ed25519 検証、バージョン付き namespace を追加します。Core 0.3（[仕様](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）はその文法を維持し、ML-DSA-65（FIPS 204）で署名します。Go と JavaScript の reference implementation、vectors、適合性テストケースはこのソースツリーにあり、`v0.3.0-alpha.1` で公開済みです。browser verifier は 3 つのバージョンすべてを検証し、CLI も対応しています（`--protocol 0.1|0.2|0.3`、`keygen --algorithm ml-dsa-65`、`verify --accept-protocol`）。`v0.4.0-alpha.1`（マージ後にタグ付け予定）から、新しい鍵は既定で ML-DSA-65（Core 0.3）になります。`keygen`、Go のバージョン指定なし署名ヘルパー、JavaScript SDK、browser ページは、保有する鍵自身のバージョンで署名します（Ed25519 鍵は従来どおり Core 0.1 に、バイト単位で同一の結果で署名します）。既存の鍵、検証、明示的な選択のために Ed25519 と Core 0.1 も引き続きサポートします。Core 0.2 は明示的に選ぶオプションです。hosted service は Core 0.1 と 0.3 を発行します（0.2 は発行しません）。詳細は [API.md](docs/apostille/API.md) を参照してください。状態は[0.2](docs/apostille/proposals/core-0.2-implementation-plan.md)と[0.3](docs/apostille/proposals/core-0.3-implementation-plan.md)の実装計画で管理しています。JS SDK の npm 公開とビルド済み CLI binary も予定していますが、いずれも `v0.3.0-alpha.1` には含まれません。
 
 ## 検証結果の意味
 

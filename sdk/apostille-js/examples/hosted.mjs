@@ -54,7 +54,9 @@ UUIDs, timestamps, file digest and size. It does not publish the original file.`
       try { return await importKeyFile(await load(path, 4096)); }
       catch (error) {
         if (error.code !== 'ENOENT') throw error;
-        const generated = await generateKeyFile();
+        // The hosted service issues Core 0.1 until its Core 0.3 cutover is deployed, so this example keeps Ed25519 keys.
+        // Against a Core 0.3 deployment, drop the option for ML-DSA-65 keys.
+        const generated = await generateKeyFile({ algorithm: 'Ed25519' });
         await save(path, generated);
         return importKeyFile(generated);
       }

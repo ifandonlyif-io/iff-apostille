@@ -98,11 +98,14 @@ func TestSignForRefusesAnotherAlgorithmBeforeAnyWork(t *testing.T) {
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), "algorithm")
 
-	// The untyped entry points keep signing 0.1 and so refuse ML-DSA signers.
+	// The untyped entry points sign the signer's natural version: an ML-DSA-65
+	// signer signs Core 0.3 (see TestNaturalVersionDefaults).
 	_, err = ml.Sign(KindStatement, Statement{})
-	require.EqualError(t, err, "signer does not support the protocol's signature algorithm")
-	_, err = CreateRegistration(ml, ml, exampleIssuer, time.Hour, fixedNow)
-	require.Error(t, err)
+	require.EqualError(t, err, "invalid signed protocol header", "an empty payload names no version")
+	_, err = CreateRegistration(ml, ed, exampleIssuer, time.Hour, fixedNow)
+	require.Error(t, err, "an Ed25519 agent cannot be delegated under Core 0.3")
+	_, err = CreateRegistration(ed, ml, exampleIssuer, time.Hour, fixedNow)
+	require.Error(t, err, "an ML-DSA-65 agent cannot be delegated under Core 0.1")
 }
 
 func TestMLDSAProductionSigningIsHedged(t *testing.T) {

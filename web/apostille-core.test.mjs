@@ -46,7 +46,7 @@ test('UTF-8 decoding preserves BOM for strict rejection without changing string 
   assert.equal(canonical(parseStrict(decodeBytes(bytes(text)))), text);
 });
 test('key import checks seed metadata and accepts CLI role without changing signature', async () => {
-  const key = await generateKeyFile();
+  const key = await generateKeyFile({ algorithm: "Ed25519" });
   const signer = await importKeyFile({...key, role: 'agent'});
   assert.equal(signer.keyID, key.key_id);
   await assert.rejects(importKeyFile({...key, key_id: 'sha256:'+'0'.repeat(64)}));
@@ -54,7 +54,7 @@ test('key import checks seed metadata and accepts CLI role without changing sign
   await assert.rejects(importKeyFile({...key, extra: true}));
 });
 test('browser signing binds delegation, source, publication audience and purpose', async () => {
-  const admin = await importKeyFile(await generateKeyFile()), agent = await importKeyFile(await generateKeyFile());
+  const admin = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" })), agent = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" }));
   const reg = await createRegistration(admin, agent, vector.issuer);
   const statement = await createStatement(bytes('local record'), 'text/plain', agent, reg);
   const grant = await createGrant(statement, reg, admin, vector.issuer, 'private');
@@ -70,7 +70,7 @@ test('browser signing binds delegation, source, publication audience and purpose
   await assert.rejects(verifyEnvelope(grant, 'origin-statement'));
 });
 test('issuer identifiers reject ambiguous URLs consistently with Go', async () => {
-  const signer = await importKeyFile(await generateKeyFile());
+  const signer = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" }));
   const payload = JSON.parse(new TextDecoder().decode(unb64(vector.bundle.certificate.payload)));
   for (const issuer of ['https://Issuer.example/a', 'https://issuer.example:443/a', 'https://issuer.example:0444/a', 'https://issuer.example/a%20b', 'https://issuer.example/a\\b', 'https://issuer.example/a?', 'urn:test#', 'http://issuer.example', 'https://user@issuer.example/a']) {
     await assert.rejects(sign('origin-certificate', {...payload, ...header('origin-certificate', signer, new Date(), issuer), expires_at:'2030-01-01T00:00:00Z'}, signer), issuer);

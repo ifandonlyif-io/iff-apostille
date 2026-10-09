@@ -102,7 +102,8 @@ oldest pending challenge, retaining the latest five.
 `challenge_rate_limit` with `Retry-After` in seconds. Cleanup removes up to 1,000
 expired rows per insertion.
 
-ERC-8004 binding is an optional, detached [binding profile 0.1](spec/erc8004-binding-0.1.md). It is
+ERC-8004 binding is an optional, detached [binding profile 0.1](spec/erc8004-binding-0.1.md)
+(Core 0.1 agents) or [0.3](spec/erc8004-binding-0.3.md) (Core 0.3 agents, ML-DSA-65). It is
 not the planned Core 0.2 organization binding and never alters Core 0.1 signed
 envelopes or bundles. An authenticated workspace administrator explicitly
 authorizes the connection by signing the request and obtaining the specified
@@ -112,6 +113,16 @@ snapshot. It does not claim current ownership, company identity, or payment
 authority. The returned document supports offline integrity verification;
 issuer trust additionally requires an independently supplied exact issuer/key
 pin. Verification never fetches keys or chain state.
+
+Binding profile 0.3 (**hosted support: deployment pending**). `GET /erc8004/config`
+gains `profiles`, the full identifiers of the binding profiles the service issues,
+and keeps `profile` as the 0.1 identifier for older clients; a service that
+predates 0.3 omits `profiles`, and a client treats `[profile]` as the list.
+`POST /agents/{id}/erc8004` accepts a 0.3 request only for an agent of a Core 0.3
+workspace and returns a 0.3 document signed by the hosted ML-DSA-65 issuer key; a
+0.1 request is accepted only for a Core 0.1 registration. The wallet owner's
+EIP-191 consent is still secp256k1 and not post-quantum. Until the service lists
+the 0.3 profile in `profiles`, clients must not send a 0.3 request.
 
 The profile is disabled unless `APOSTILLE_ERC8004_ENABLED=true`; its default is
 `false`. Enable either the existing Ethereum pair `ETHEREUM_RPC_URL` and

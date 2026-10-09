@@ -90,7 +90,7 @@ func (a application) keygen(ctx context.Context, args []string) error {
 	flags := a.flags("keygen")
 	out := flags.String("out", "", "new private key JSON file")
 	role := flags.String("role", "", "optional local key role label")
-	algorithm := flags.String("algorithm", "ed25519", "key algorithm: ed25519 (Core 0.1 and 0.2) or ml-dsa-65 (Core 0.3)")
+	algorithm := flags.String("algorithm", "ml-dsa-65", "key algorithm: ml-dsa-65 (Core 0.3, the default) or ed25519 (Core 0.1 and 0.2)")
 	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
@@ -144,11 +144,11 @@ func (a application) delegate(ctx context.Context, args []string) error {
 	audience := flags.String("audience", "", "exact service issuer URI")
 	out := flags.String("out", "", "new registration JSON file")
 	days30 := flags.Bool("days30", false, "make delegation valid for 30 days instead of 24 hours")
-	protocolFlag := flags.String("protocol", "0.1", "Core version to sign: 0.1, 0.2 or 0.3")
+	protocolFlag := flags.String("protocol", protocolAuto, "Core version to sign: auto (the key file's own version: 0.1 for Ed25519, 0.3 for ML-DSA-65), 0.1, 0.2 or 0.3")
 	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
-	protocol, err := parseProtocol(*protocolFlag)
+	protocolChoice, err := parseProtocolChoice(*protocolFlag)
 	if err != nil {
 		return err
 	}
@@ -162,6 +162,7 @@ func (a application) delegate(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("admin key: %w", err)
 	}
+	protocol := resolveProtocol(protocolChoice, admin)
 	if err := requireKeyFor(protocol, admin); err != nil {
 		return fmt.Errorf("admin key: %w", err)
 	}
@@ -241,11 +242,11 @@ func (a application) sign(ctx context.Context, args []string) error {
 	out := flags.String("out", "", "new signed statement JSON file")
 	registrationPath := flags.String("registration", "", "agent registration JSON file")
 	agentID := flags.String("agent-id", "", "agent UUID for producer-only statements")
-	protocolFlag := flags.String("protocol", "0.1", "Core version to sign: 0.1, 0.2 or 0.3")
+	protocolFlag := flags.String("protocol", protocolAuto, "Core version to sign: auto (the key file's own version: 0.1 for Ed25519, 0.3 for ML-DSA-65), 0.1, 0.2 or 0.3")
 	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
-	protocol, err := parseProtocol(*protocolFlag)
+	protocolChoice, err := parseProtocolChoice(*protocolFlag)
 	if err != nil {
 		return err
 	}
@@ -259,6 +260,7 @@ func (a application) sign(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("agent key: %w", err)
 	}
+	protocol := resolveProtocol(protocolChoice, agent)
 	if err := requireKeyFor(protocol, agent); err != nil {
 		return fmt.Errorf("agent key: %w", err)
 	}
@@ -328,11 +330,11 @@ func (a application) grant(ctx context.Context, args []string) error {
 	audience := flags.String("audience", "", "exact service issuer URI")
 	visibility := flags.String("visibility", "", "private or public")
 	out := flags.String("out", "", "new publication grant JSON file")
-	protocolFlag := flags.String("protocol", "0.1", "Core version to sign: 0.1, 0.2 or 0.3")
+	protocolFlag := flags.String("protocol", protocolAuto, "Core version to sign: auto (the key file's own version: 0.1 for Ed25519, 0.3 for ML-DSA-65), 0.1, 0.2 or 0.3")
 	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
-	protocol, err := parseProtocol(*protocolFlag)
+	protocolChoice, err := parseProtocolChoice(*protocolFlag)
 	if err != nil {
 		return err
 	}
@@ -350,6 +352,7 @@ func (a application) grant(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("admin key: %w", err)
 	}
+	protocol := resolveProtocol(protocolChoice, admin)
 	if err := requireKeyFor(protocol, admin); err != nil {
 		return fmt.Errorf("admin key: %w", err)
 	}

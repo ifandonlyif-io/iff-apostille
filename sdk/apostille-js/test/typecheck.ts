@@ -11,6 +11,11 @@ import {
   createRegistration,
   createStatement,
   generateKeyFile,
+  naturalProtocol,
+  ERC8004_PROTOCOL,
+  ERC8004_PROTOCOL_03,
+  KNOWN_ERC8004_PROFILES,
+  type ERC8004Profile,
   importKeyFile,
   issueBundle,
   verifyArtifact,
@@ -107,6 +112,10 @@ async function hostedSurface(): Promise<void> {
   await client.registerAgent("agent", registration);
   const identity: ERC8004Identity = { chain_id: "8453", registry_address: "0x1111111111111111111111111111111111111111", erc8004_agent_id: "42", owner_address: "0x2222222222222222222222222222222222222222" };
   const request = await createERC8004Request(edSigner, registration, identity, "https://issuer.example/apostille");
+  const request03 = await createERC8004Request(mlSigner, registration, identity, "https://issuer.example/apostille");
+  const profiles: readonly ERC8004Profile[] = [ERC8004_PROTOCOL, ERC8004_PROTOCOL_03, ...KNOWN_ERC8004_PROFILES, request03.protocol];
+  const listed: readonly ERC8004Profile[] | undefined = (await client.erc8004Config()).profiles;
+  void [profiles, listed];
   await erc8004OwnerMessage(request);
   await client.erc8004Config();
   const binding = await client.createERC8004Binding((await verifyRegistration(registration)).agent_id, request, `0x${"00".repeat(65)}`);
@@ -127,7 +136,11 @@ void verification;
 // Generate, import, then sign in or sign: the key file protocol keeps the
 // signer type, so no cast is needed for either algorithm.
 async function keyFileSignerTypes(): Promise<void> {
-  const ed = await importKeyFile(await generateKeyFile());
+  // The default is ML-DSA-65 (Core 0.3); Ed25519 is an explicit choice.
+  const byDefault: MLDSA65Signer = await importKeyFile(await generateKeyFile());
+  const defaultProtocol: typeof PROTOCOL | typeof PROTOCOL_03 = naturalProtocol(byDefault);
+  void [byDefault, defaultProtocol];
+  const ed = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" }));
   const edSignerFromFile: Ed25519Signer = ed;
   const edLogin: Promise<string> = signLogin("iff-apostille/login/0.1\n", ed, "https://issuer.example/apostille");
   const ml = await importKeyFile(await generateKeyFile({ algorithm: "ML-DSA-65" }));

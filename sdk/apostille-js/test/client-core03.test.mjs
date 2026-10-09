@@ -7,7 +7,7 @@ const issuer = "https://issuer.example/apostille";
 const baseURL = "https://issuer.example/api/apostille/v1";
 const bytes = (value) => new TextEncoder().encode(value);
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
-const ed = async () => core.importKeyFile(await core.generateKeyFile());
+const ed = async () => core.importKeyFile(await core.generateKeyFile({ algorithm: "Ed25519" }));
 const ml = async () => core.importKeyFile(await core.generateKeyFile({ algorithm: "ML-DSA-65" }));
 const code = (expected) => (error) => error instanceof ApostilleAPIError && error.code === expected;
 

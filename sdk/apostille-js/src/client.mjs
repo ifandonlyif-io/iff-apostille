@@ -4,7 +4,7 @@ import {
 } from "./apostille-core.mjs";
 import { DEFAULT_TIMEOUT_MS, MAX_RESPONSE_BYTES } from "./apostille-http.mjs";
 import { profileFor } from "./apostille-profile.mjs";
-import { ERC8004_PROTOCOL, erc8004OwnerMessage, verifyERC8004Binding } from "./apostille-erc8004.mjs";
+import { ERC8004_PROTOCOL, KNOWN_ERC8004_PROFILES, erc8004OwnerMessage, verifyERC8004Binding } from "./apostille-erc8004.mjs";
 
 const encoder = new TextEncoder();
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -179,6 +179,8 @@ export class ApostilleClient {
         const data = await this.#request("GET", "/erc8004/config");
         try {
             need(data.profile === ERC8004_PROTOCOL && typeof data.enabled === "boolean" && data.max_binding_age_seconds === 3600 && data.wallet_support === "eoa_only" && Array.isArray(data.networks), "invalid_erc8004_config");
+            // profiles lists every binding profile the service issues; an older service omits it.
+            need(data.profiles === undefined || (Array.isArray(data.profiles) && data.profiles.every((profile) => KNOWN_ERC8004_PROFILES.includes(profile))), "invalid_erc8004_config");
             for (const network of data.networks) {
                 need(network && Object.keys(network).length === 2 && typeof network.chain_id === "string" && /^(1|8453)$/.test(network.chain_id) && /^0x[0-9a-f]{40}$/.test(network.registry_address) && !/^0x0{40}$/.test(network.registry_address), "invalid_erc8004_config");
             }

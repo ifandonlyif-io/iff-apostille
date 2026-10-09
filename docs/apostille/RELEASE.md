@@ -1,5 +1,43 @@
 # Source alpha release preparation
 
+## v0.4.0-alpha.1 (to be tagged after merge)
+
+Post-quantum defaults and ERC-8004 binding profile 0.3, on top of
+`v0.3.1-alpha.1`. No existing signed byte, vector, protocol identifier or domain
+changes; all Core 0.1, 0.2 and 0.3 vector files are byte-identical to the previous
+release.
+
+- **New keys are ML-DSA-65 (Core 0.3) by default.** `apostille keygen` defaults to
+  `--algorithm ml-dsa-65`; JavaScript `generateKeyFile()` defaults to ML-DSA-65
+  (`{ algorithm: "Ed25519" }` still creates an Ed25519 key); the browser page
+  selects ML-DSA-65 first. Ed25519 and Core 0.1 remain supported for existing
+  keys, for verification and for explicit choices.
+- **Signing follows the key.** Go `Sign`, `NewHeader`, `CreateRegistration`,
+  `CreateStatement` and `CreateGrant`, the CLI `--protocol auto` default of
+  `delegate`, `sign` and `grant`, and the JavaScript signing forms without a
+  protocol argument use the signer's natural version: Ed25519 signs Core 0.1
+  (byte-identical to before), ML-DSA-65 signs Core 0.3 (the version-less Go
+  forms used to refuse it). `Signer.NaturalProtocol()` and JS `naturalProtocol()`
+  report it. The explicit `…For` forms and explicit protocol arguments are unchanged;
+  Core 0.2 is only ever explicit.
+- **ERC-8004 binding profile 0.3** ([specification](spec/erc8004-binding-0.3.md)):
+  ML-DSA-65 administrator and issuer signatures over Core 0.3 registrations, domains
+  `iff-apostille/erc8004-binding/{request,snapshot}/0.3`, owner text
+  `iff-apostille/erc8004-binding/owner/0.3` (the wallet consent stays secp256k1).
+  The Go and JavaScript implementations share one binding-profile table with 0.1;
+  `CreateERC8004Request` picks the profile from the registration. New identifiers
+  `ERC8004Profile03`, `KnownERC8004Profiles()` and JS `ERC8004_PROTOCOL_03`,
+  `KNOWN_ERC8004_PROFILES`; `ERC8004Config` gains `profiles`. Known-answer document:
+  `testdata/apostille/erc8004-binding-0.3.json`. A Core 0.2 registration has no binding
+  profile, and a binding 0.1 now refuses any registration that is not Core 0.1.
+  Hosted support for 0.3 is deployment pending.
+- **Module pins.** `cmd/apostille` and `apostille/zkbudget` pin the root module; the
+  root tag comes first and the pins are then bumped. The CLI's `verify-erc8004` still
+  covers binding profile 0.1 only until then.
+- **Go/JS API changes.** JS `createERC8004Request` takes any `Signer` (it was
+  Ed25519-only); `header`, `sign`, `createRegistration` and `createProducerStatement`
+  default to the signer's natural protocol instead of Core 0.1.
+
 `v0.3.1-alpha.1` is a root-module-only release on top of `v0.3.0-alpha.1`. It
 adds hosted-API client support for Core 0.3 (`KeysFor`/`keysFor`, ML-DSA-65
 login and a version check on submission responses) and `ParsePublicKeyFor`, to

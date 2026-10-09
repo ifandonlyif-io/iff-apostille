@@ -11,9 +11,11 @@ import (
 
 // CreateRegistration creates an administrator delegation and agent proof of
 // possession locally. It does not register with or send anything to a service.
-// It signs Core 0.1; CreateRegistrationFor takes the version explicitly.
+// It signs the administrator's natural version (Core 0.1 for Ed25519, Core 0.3
+// for ML-DSA-65) and refuses an agent key of the other algorithm;
+// CreateRegistrationFor takes the version explicitly.
 func CreateRegistration(admin, agent *Signer, audience string, validFor time.Duration, now time.Time) (AgentRegistration, error) {
-	return CreateRegistrationFor(Protocol, admin, agent, audience, validFor, now)
+	return CreateRegistrationFor(admin.NaturalProtocol(), admin, agent, audience, validFor, now)
 }
 
 // CreateRegistrationFor is CreateRegistration for a known protocol version.
@@ -46,10 +48,11 @@ func CreateRegistrationFor(protocol string, admin, agent *Signer, audience strin
 
 // CreateStatement streams the caller's exact artifact bytes without storing or
 // uploading them. Supply a registration, or a producer-only agent UUID (not both).
-// It signs Core 0.1 and refuses a registration of another version;
+// It signs the agent's natural version (Core 0.1 for Ed25519, Core 0.3 for
+// ML-DSA-65) and refuses a registration of another version;
 // CreateStatementFor takes the version explicitly.
 func CreateStatement(reader io.Reader, mediaType string, agent *Signer, reg *AgentRegistration, agentID string, now time.Time) (Envelope, error) {
-	return CreateStatementFor(Protocol, reader, mediaType, agent, reg, agentID, now)
+	return CreateStatementFor(agent.NaturalProtocol(), reader, mediaType, agent, reg, agentID, now)
 }
 
 // CreateStatementFor is CreateStatement for a known protocol version. It
@@ -100,9 +103,10 @@ func CreateStatementFor(protocol string, reader io.Reader, mediaType string, age
 
 // CreateGrant creates an explicit five-minute authorization for one statement,
 // registration, audience and visibility. It never makes a network request.
-// It signs Core 0.1; CreateGrantFor takes the version explicitly.
+// It signs the administrator's natural version (Core 0.1 for Ed25519, Core 0.3
+// for ML-DSA-65); CreateGrantFor takes the version explicitly.
 func CreateGrant(statement Envelope, reg AgentRegistration, admin *Signer, audience, visibility string, now time.Time) (Envelope, error) {
-	return CreateGrantFor(Protocol, statement, reg, admin, audience, visibility, now)
+	return CreateGrantFor(admin.NaturalProtocol(), statement, reg, admin, audience, visibility, now)
 }
 
 // CreateGrantFor is CreateGrant for a known protocol version. The statement and

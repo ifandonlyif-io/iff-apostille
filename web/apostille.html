@@ -119,7 +119,7 @@
 
             <section class="console-card" id="auth-panel">
                 <div class="card-heading"><span class="step-token">A</span><div><h2 data-i18n="adminKeyTitle">Administrator key</h2><p data-i18n="adminKeyBody">Generate a new key or import your JSON backup. Nothing is placed in browser storage.</p></div></div>
-                <label class="algorithm-field"><span data-i18n="keyAlgorithm">Key algorithm</span><select id="admin-algorithm"><option value="Ed25519" data-i18n="algEd25519">Ed25519 (Core 0.1)</option><option value="ML-DSA-65" data-i18n="algMLDSA">ML-DSA-65 (Core 0.3, post-quantum)</option></select></label>
+                <label class="algorithm-field"><span data-i18n="keyAlgorithm">Key algorithm</span><select id="admin-algorithm"><option value="ML-DSA-65" data-i18n="algMLDSA" selected>ML-DSA-65 (Core 0.3, post-quantum)</option><option value="Ed25519" data-i18n="algEd25519">Ed25519 (Core 0.1)</option></select></label>
                 <div class="action-row">
                     <button class="button primary" id="admin-generate" type="button" data-i18n="generateAdmin">Generate and download key</button>
                     <label class="file-button"><span data-i18n="importAdmin">Import key backup</span><input id="admin-import" type="file" accept="application/json,.json"></label>
@@ -148,7 +148,7 @@
                     <div class="field-grid two">
                         <label><span data-i18n="agentName">Agent name</span><input id="agent-name" maxlength="120" placeholder="Release agent"></label>
                         <div class="action-row compact">
-                            <label class="algorithm-field"><span data-i18n="keyAlgorithm">Key algorithm</span><select id="agent-algorithm"><option value="Ed25519" data-i18n="algEd25519">Ed25519 (Core 0.1)</option><option value="ML-DSA-65" data-i18n="algMLDSA">ML-DSA-65 (Core 0.3, post-quantum)</option></select></label>
+                            <label class="algorithm-field"><span data-i18n="keyAlgorithm">Key algorithm</span><select id="agent-algorithm"><option value="ML-DSA-65" data-i18n="algMLDSA" selected>ML-DSA-65 (Core 0.3, post-quantum)</option><option value="Ed25519" data-i18n="algEd25519">Ed25519 (Core 0.1)</option></select></label>
                             <button class="button secondary" id="agent-generate" type="button" data-i18n="generateAgent">Generate and download agent key</button>
                             <label class="file-button"><span data-i18n="importAgent">Import existing agent key</span><input id="agent-import" type="file" accept="application/json,.json"></label>
                         </div>

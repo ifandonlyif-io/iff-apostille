@@ -1,7 +1,7 @@
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import {
-  PROTOCOL, canonical, createRegistration, createStatement, generateKeyFile,
+  canonical, createRegistration, createStatement, generateKeyFile,
   importKeyFile, verifyArtifact, verifyBundle,
 } from '@ifandonlyif/apostille';
 
@@ -22,6 +22,7 @@ if (args.length !== 1 || args[0] === '--help') {
     await mkdir(directory, { recursive: true, mode: 0o700 });
     const save = (name, value) => writeFile(resolve(directory, name), canonical(value) + '\n', { mode: 0o600, flag: 'wx' });
 
+    // New keys are ML-DSA-65 (Core 0.3). Pass { algorithm: 'Ed25519' } for a Core 0.1 key.
     const administratorKey = await generateKeyFile();
     const agentKey = await generateKeyFile();
     await save('admin-key.json', administratorKey);
@@ -31,7 +32,7 @@ if (args.length !== 1 || args[0] === '--help') {
     // This local audience is an example identifier, not an IFF registration.
     const registration = await createRegistration(administrator, agent, 'urn:example:apostille:offline');
     const statement = await createStatement(bytes, 'application/octet-stream', agent, registration);
-    const bundle = { protocol: PROTOCOL, statement, ...registration, certificate: null };
+    const bundle = { protocol: statement.protocol, statement, ...registration, certificate: null };
     await save('registration.json', registration);
     await save('producer-bundle.json', bundle);
 

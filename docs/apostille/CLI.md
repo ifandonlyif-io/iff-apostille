@@ -1,7 +1,7 @@
 # Apostille local CLI
 
 The `apostille` command creates and verifies issuer-neutral Apostille artifacts (Core 0.1, 0.2 and 0.3) using local files. It does not contact IFF, upload the original artifact, or make any network request.
-Core 0.1 is the default; `--protocol 0.2` and `--protocol 0.3` select the later versions (see [Core versions](#core-versions)). Building the CLI needs Go 1.27 or later.
+New keys are ML-DSA-65 and signing follows the key file: an ML-DSA-65 key signs Core 0.3 and an Ed25519 key signs Core 0.1, unless `--protocol` names another version (see [Core versions](#core-versions)). Building the CLI needs Go 1.27 or later.
 
 Install the released module, or build it from the repository root:
 
@@ -58,10 +58,10 @@ mkdir -m 0700 .apostille-private
 ./bin/apostille keygen --out .apostille-private/issuer-key.json --role local-issuer
 ```
 
-Add `--algorithm ml-dsa-65` to generate a post-quantum key for Core 0.3; the default is `--algorithm ed25519`, which signs Core 0.1 and 0.2:
+`keygen` generates an ML-DSA-65 key (post-quantum, Core 0.3) by default. Add `--algorithm ed25519` for an Ed25519 key, which signs Core 0.1 and 0.2 and stays supported for existing keys and deployments that still issue Core 0.1:
 
 ```bash
-./bin/apostille keygen --out .apostille-private/admin-key-pq.json --role administrator --algorithm ml-dsa-65
+./bin/apostille keygen --out .apostille-private/admin-key-ed25519.json --role administrator --algorithm ed25519
 ```
 
 The repository excludes `.apostille-private/` from Git and Docker build contexts. Each private key file contains `protocol`, `key_id`, `public_key`, and `seed`, plus the optional local `role` label. The command creates it with mode `0600`, refuses to overwrite an existing path, and never writes the seed to stdout. On Unix, every command rejects a private key file readable by the group or other users. Keep production keys in a suitable secret store outside the repository.
@@ -72,7 +72,7 @@ The role label is informational. Cryptographic roles are established by the sign
 
 ## Core versions
 
-`delegate`, `sign` and `grant` take `--protocol 0.1|0.2|0.3` (or the full protocol identifier); the default is `0.1`. `issue` follows the version of the statement it certifies; its optional `--protocol` must name that same version.
+`delegate`, `sign` and `grant` take `--protocol auto|0.1|0.2|0.3` (or the full protocol identifier). The default, `auto`, signs the key file's own version: Core 0.1 for an Ed25519 key and Core 0.3 for an ML-DSA-65 key. Core 0.2 is only ever an explicit `--protocol 0.2` with Ed25519 keys; an explicit value is never overridden. `issue` follows the version of the statement it certifies; its optional `--protocol` must name that same version.
 
 - Core 0.1 and 0.2 need Ed25519 key files; Core 0.3 needs ML-DSA-65 key files. A key of the wrong algorithm is refused before anything is signed, and no output file is written.
 - Versions never mix: `sign` and `grant` refuse a registration or statement of another version than `--protocol`.
@@ -80,19 +80,19 @@ The role label is informational. Cryptographic roles are established by the sign
 A complete Core 0.3 flow:
 
 ```bash
-./bin/apostille keygen --out .apostille-private/admin-key.json --role administrator --algorithm ml-dsa-65
-./bin/apostille keygen --out .apostille-private/agent-key.json --role agent --algorithm ml-dsa-65
-./bin/apostille keygen --out .apostille-private/issuer-key.json --role local-issuer --algorithm ml-dsa-65
-./bin/apostille delegate --protocol 0.3 --admin-key .apostille-private/admin-key.json \
+./bin/apostille keygen --out .apostille-private/admin-key.json --role administrator
+./bin/apostille keygen --out .apostille-private/agent-key.json --role agent
+./bin/apostille keygen --out .apostille-private/issuer-key.json --role local-issuer
+./bin/apostille delegate --admin-key .apostille-private/admin-key.json \
   --agent-key .apostille-private/agent-key.json --audience https://issuer.example/apostille --out registration.json
-./bin/apostille sign --protocol 0.3 --key .apostille-private/agent-key.json \
+./bin/apostille sign --key .apostille-private/agent-key.json \
   --file report.json --registration registration.json --out statement.json
 ./bin/apostille issue --key .apostille-private/issuer-key.json --issuer https://issuer.example/apostille \
   --statement statement.json --registration registration.json --out bundle.json
 ./bin/apostille verify --offline --bundle bundle.json --artifact report.json --accept-protocol 0.3
 ```
 
-The commands below show the default Core 0.1 form; add `--protocol` and the matching key files for the later versions.
+The commands below use the key files generated above and need no `--protocol`; with Ed25519 key files they sign Core 0.1 exactly as before. The ZK commands and `verify-erc8004` need Core 0.1 inputs and so Ed25519 key files.
 
 ## Register an agent
 

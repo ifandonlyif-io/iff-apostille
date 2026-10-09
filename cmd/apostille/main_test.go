@@ -26,10 +26,13 @@ func invokeCLI(t *testing.T, now time.Time, args ...string) (string, string, err
 	return stdout.String(), stderr.String(), err
 }
 
+// generateTestKey makes an Ed25519 key: the flows that use it are Core 0.1 flows
+// (and the ZK budget profile covers Core 0.1 only). keygen's own default,
+// ML-DSA-65, is covered by TestKeygenAlgorithms.
 func generateTestKey(t *testing.T, dir, name, role string) string {
 	t.Helper()
 	path := filepath.Join(dir, name+".json")
-	stdout, _, err := invokeCLI(t, cliNow, "keygen", "--out", path, "--role", role)
+	stdout, _, err := invokeCLI(t, cliNow, "keygen", "--out", path, "--role", role, "--algorithm", "ed25519")
 	require.NoError(t, err)
 	require.NotContains(t, stdout, "seed")
 	require.NotContains(t, stdout, "private")

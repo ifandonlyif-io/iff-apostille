@@ -60,7 +60,7 @@ pinned public Go release.
 | JavaScript / TypeScript | [SDK](sdk/apostille-js/) | Offline default import and separate `/client` entry |
 | Local CLI | [commands](docs/apostille/CLI.md) | Key generation, signing, local issuance and verification |
 | Browser verifier | [source](web/), `make verifier` | Four-language local verification; no key lookup, RPC or telemetry |
-| ERC-8004 profile | [spec](docs/apostille/spec/erc8004-binding-0.1.md) | Detached issuer-checked historical ownership evidence |
+| ERC-8004 profile | [0.1](docs/apostille/spec/erc8004-binding-0.1.md), [0.3](docs/apostille/spec/erc8004-binding-0.3.md), [0.3 vector](testdata/apostille/erc8004-binding-0.3.json) | Detached issuer-checked historical ownership evidence; 0.3 signs with ML-DSA-65 for Core 0.3 registrations |
 | Experimental ZK | [guide](docs/apostille/ZK.md), [module](apostille/zkbudget/) | Local committed-budget predicate, Go/CLI only |
 
 ## Try the source
@@ -107,9 +107,13 @@ ML-DSA-65 (FIPS 204). Go and JavaScript reference implementations, vectors and
 conformance cases are in this source tree and released in `v0.3.0-alpha.1`; the
 browser verifier checks all three versions, and the CLI supports them
 (`--protocol 0.1|0.2|0.3`, `keygen --algorithm ml-dsa-65`, `verify
---accept-protocol`). The hosted service and the hosted API client do not support
-0.2 or 0.3 yet. Core 0.1 remains the default signing version until a switch is
-announced; 0.2 and 0.3 are explicit options. The
+--accept-protocol`). Starting with `v0.4.0-alpha.1` (to be tagged
+after merge), new keys are ML-DSA-65 (Core 0.3) by default: `keygen`, the Go
+version-less signing helpers, the JavaScript SDK and the browser page sign the
+version of the key they hold (Ed25519 keys keep signing Core 0.1, byte for
+byte). Ed25519 and Core 0.1 remain supported for existing keys, verification and
+explicit choices; Core 0.2 is an explicit option. The hosted service issues
+Core 0.1 and 0.3 (never 0.2); see [API.md](docs/apostille/API.md). The
 [0.2](docs/apostille/proposals/core-0.2-implementation-plan.md) and
 [0.3](docs/apostille/proposals/core-0.3-implementation-plan.md) implementation
 plans track their status. An npm release of the JS SDK and prebuilt CLI binaries

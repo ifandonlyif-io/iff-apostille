@@ -3,7 +3,13 @@
 `@ifandonlyif/apostille` is an ESM JavaScript package with TypeScript declarations
 for Apostille Core 0.1. This alpha is **not published to the npm registry**. Install
 a locally packed archive from this checkout. Node.js 22 or later is required for
-the examples; browser use requires WebCrypto Ed25519 in a secure context.
+the examples; browser use of Ed25519 keys requires WebCrypto Ed25519 in a secure context.
+
+From `v0.4.0-alpha.1` (source; not yet tagged), `generateKeyFile()` creates an
+ML-DSA-65 key file (Core 0.3) by default and signing without an explicit protocol
+uses the signer's natural version: an Ed25519 signer signs Core 0.1 as before, an
+ML-DSA-65 signer signs Core 0.3. Pass `{ algorithm: "Ed25519" }` for an Ed25519 key.
+Binding profile 0.3 of ERC-8004 is exported as `ERC8004_PROTOCOL_03`.
 
 The main import and `/core` entrypoint are strictly offline. They sign the bytes
 the caller supplies and verify portable bundles. The separate `/client` entrypoint

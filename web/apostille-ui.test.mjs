@@ -169,7 +169,8 @@ async function consoleHarness(t, { certificates = [], empty = false, mode = "con
         click() { if (this.download) downloads.push({ name: this.download, blob: blobs.get(this.href) }); }
     }
     const node = (id) => {
-        if (!nodes.has(id)) nodes.set(id, new Element());
+        // The key algorithm selects default to their first option, ML-DSA-65, as in apostille.html.
+        if (!nodes.has(id)) nodes.set(id, Object.assign(new Element(), /^(admin|agent)-algorithm$/.test(id) ? { value: "ML-DSA-65" } : {}));
         return nodes.get(id);
     };
     const radios = ["private", "public"].map((value) => Object.assign(new Element(), { value, checked: value === "private" }));
@@ -216,6 +217,8 @@ async function consoleHarness(t, { certificates = [], empty = false, mode = "con
     });
     await import(`./apostille-page.mjs?race-test=${crypto.randomUUID()}`);
     if (empty) return { node, downloads, submissions, requests };
+    // New keys are ML-DSA-65 by default, and the hosted service still logs in with Ed25519 (deployment pending).
+    node("admin-algorithm").value = "Ed25519"; node("agent-algorithm").value = "Ed25519";
     await node("admin-generate").dispatch("click");
     await node("admin-login").dispatch("click");
     await node("agent-generate").dispatch("click");
@@ -455,7 +458,7 @@ test("old login and workspace successes or failures cannot replace a newer sessi
             });
             const pending = ui.node("admin-login").dispatch("click");
             await entered.promise;
-            const keyFile = await generateKeyFile(), raw = new TextEncoder().encode(JSON.stringify(keyFile));
+            const keyFile = await generateKeyFile({ algorithm: "Ed25519" }), raw = new TextEncoder().encode(JSON.stringify(keyFile));
             ui.node("admin-import").files = [{ size: raw.length, arrayBuffer: async () => raw.buffer }];
             await ui.node("admin-import").dispatch("change");
             await ui.node("admin-login").dispatch("click");
@@ -479,7 +482,7 @@ test("starting a slow administrator import immediately invalidates login and can
     });
     const login = ui.node("admin-login").dispatch("click");
     await entered.promise;
-    const keyFile = await generateKeyFile(), raw = new TextEncoder().encode(JSON.stringify(keyFile));
+    const keyFile = await generateKeyFile({ algorithm: "Ed25519" }), raw = new TextEncoder().encode(JSON.stringify(keyFile));
     ui.node("admin-import").files = [{ size: raw.length, arrayBuffer: () => read.promise }];
     const importing = ui.node("admin-import").dispatch("change");
     assert.equal(ui.node("admin-login").disabled, true);
@@ -732,7 +735,7 @@ test("ERC-8004 create and historical load discard verification completed after s
     t.after(() => previousEthereum === undefined ? delete globalThis.ethereum : globalThis.ethereum = previousEthereum);
     const ui = await consoleHarness(t), registrationRequest = ui.requests.find(({ path }) => path === "/agents");
     const registration = { delegation: registrationRequest.body.delegation, acceptance: registrationRequest.body.acceptance };
-    const delegation = await verifyEnvelope(registration.delegation, "agent-delegation"), issuerSigner = await importKeyFile(await generateKeyFile());
+    const delegation = await verifyEnvelope(registration.delegation, "agent-delegation"), issuerSigner = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" }));
     let stored;
     ui.intercept(async ({ path, req, response }) => {
         if (!/\/erc8004$/.test(path)) return response;
@@ -777,8 +780,8 @@ test("ERC-8004 create and historical load discard verification completed after s
 
 test("offline ERC-8004 UI reports binding integrity without claiming artifact or current ownership verification", async (t) => {
     const ui = await consoleHarness(t, { empty: true, mode: "verify" });
-    const admin = await importKeyFile(await generateKeyFile()), agent = await importKeyFile(await generateKeyFile());
-    const issuer = await importKeyFile(await generateKeyFile()), audience = "https://issuer.example/apostille";
+    const admin = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" })), agent = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" }));
+    const issuer = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" })), audience = "https://issuer.example/apostille";
     const registration = await createRegistration(admin, agent, audience, 30);
     const request = await createERC8004Request(admin, registration, {
         chain_id: "8453", registry_address: `0x${"1".repeat(40)}`, erc8004_agent_id: "42", owner_address: `0x${"2".repeat(40)}`,
@@ -861,10 +864,11 @@ test("asset lists name every module and vendored file the page imports, and CSP 
 const downloaded = async (ui, index) => JSON.parse(await ui.downloads[index].blob.text());
 const noHostedWork = (ui) => ui.requests.filter((request) => !["/status", "/erc8004/config"].includes(request.path));
 
-test("key algorithm choice offers Ed25519 by default and ML-DSA-65, and every new key has four locales", () => {
+test("key algorithm choice defaults to ML-DSA-65 and keeps Ed25519 selectable, and every new key has four locales", () => {
     for (const id of ["admin-algorithm", "agent-algorithm"]) {
         const select = html.match(new RegExp(`<select id="${id}">(.*?)</select>`))[1];
-        assert.deepEqual([...select.matchAll(/value="([^"]+)"/g)].map((match) => match[1]), ["Ed25519", "ML-DSA-65"], "Ed25519 is first and so the default");
+        assert.deepEqual([...select.matchAll(/value="([^"]+)"/g)].map((match) => match[1]), ["ML-DSA-65", "Ed25519"], "ML-DSA-65 is first and so the default");
+        assert.match(select, /<option value="ML-DSA-65"[^>]*selected>/, "and it is explicitly selected");
     }
     for (const key of ["keyAlgorithm", "algEd25519", "algMLDSA", "mldsaDisclosure", "hostedPending", "requirePQ", "requirePQBinding", "protocolPostQuantum", "protocolClassical"]) {
         for (const locale of Object.keys(messages)) assert.ok(Object.hasOwn(messages[locale], key) && messages[locale][key], `${locale}:${key}`);
@@ -897,16 +901,18 @@ test("default Ed25519 key generation and signing are unchanged and show no ML-DS
 
 test("choosing ML-DSA-65 shows the browser signing disclosure before a key exists", async (t) => {
     const ui = await consoleHarness(t, { empty: true });
+    // ML-DSA-65 is the default choice, so the disclosure is visible from the start.
+    assert.equal(ui.node("admin-mldsa-note").hidden, false);
+    assert.equal(ui.node("agent-mldsa-note").hidden, false);
+    ui.node("admin-algorithm").value = "Ed25519";
+    await ui.node("admin-algorithm").dispatch("change");
     assert.equal(ui.node("admin-mldsa-note").hidden, true);
     ui.node("admin-algorithm").value = "ML-DSA-65";
     await ui.node("admin-algorithm").dispatch("change");
     assert.equal(ui.node("admin-mldsa-note").hidden, false);
-    ui.node("admin-algorithm").value = "Ed25519";
-    await ui.node("admin-algorithm").dispatch("change");
-    assert.equal(ui.node("admin-mldsa-note").hidden, true);
-    ui.node("agent-algorithm").value = "ML-DSA-65";
+    ui.node("agent-algorithm").value = "Ed25519";
     await ui.node("agent-algorithm").dispatch("change");
-    assert.equal(ui.node("agent-mldsa-note").hidden, false);
+    assert.equal(ui.node("agent-mldsa-note").hidden, true);
 });
 
 test("an ML-DSA-65 key signs Core 0.3 locally and every hosted action stays disabled", async (t) => {
@@ -962,7 +968,8 @@ test("an ML-DSA-65 agent key cannot use hosted registration even with an Ed25519
     assert.equal(ui.node("agent-hosted-note").hidden, false);
 });
 
-async function verifierBundle(protocol, signerOptions) {
+async function verifierBundle(protocol, { algorithm = protocol === PROTOCOL_03 ? "ML-DSA-65" : "Ed25519" } = {}) {
+    const signerOptions = { algorithm };
     const agent = await importKeyFile(await generateKeyFile(signerOptions)), issuer = await importKeyFile(await generateKeyFile(signerOptions));
     const statement = await createProducerStatement(new TextEncoder().encode("original"), "text/plain", agent, crypto.randomUUID(), protocol);
     return issueBundle({ protocol, statement, delegation: null, acceptance: null, certificate: null }, issuer, "https://issuer.example/apostille");

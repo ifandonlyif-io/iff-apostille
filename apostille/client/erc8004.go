@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"regexp"
+	"slices"
 	"time"
 
 	core "github.com/ifandonlyif-io/iff-apostille/apostille"
@@ -15,7 +16,11 @@ var ownerSignaturePattern = regexp.MustCompile(`^0x[0-9a-f]{130}$`)
 // ERC8004Config describes the optional hosted binding profile. Network entries
 // are allowlisted identity registries; they never disclose an RPC endpoint.
 type ERC8004Config struct {
-	Profile              string           `json:"profile"`
+	// Profile is the binding profile 0.1 identifier, kept for older clients.
+	Profile string `json:"profile"`
+	// Profiles lists every binding profile the service issues (0.1 and, where
+	// deployed, 0.3). An older service omits it.
+	Profiles             []string         `json:"profiles,omitempty"`
 	Enabled              bool             `json:"enabled"`
 	Networks             []ERC8004Network `json:"networks"`
 	MaxBindingAgeSeconds int              `json:"max_binding_age_seconds"`
@@ -46,6 +51,12 @@ func (c *Client) ERC8004Config(ctx context.Context) (out ERC8004Config, err erro
 	}
 	if out.Profile != core.ERC8004Profile || out.Networks == nil || out.MaxBindingAgeSeconds != 3600 || out.WalletSupport != "eoa_only" {
 		return out, sdkError("invalid_erc8004_config")
+	}
+	known := core.KnownERC8004Profiles()
+	for _, profile := range out.Profiles {
+		if !slices.Contains(known, profile) {
+			return out, sdkError("invalid_erc8004_config")
+		}
 	}
 	for _, network := range out.Networks {
 		if (network.ChainID != "1" && network.ChainID != "8453") || !core.ValidERC8004Address(network.RegistryAddress) {
@@ -123,7 +134,7 @@ func (c *Client) checkedERC8004Binding(raw []byte, agentID string, expectedReque
 }
 
 func decodeERC8004BindingPayload(envelope core.Envelope) (core.ERC8004Binding, error) {
-	if envelope.Protocol != core.ERC8004Profile || envelope.Kind != core.KindERC8004Binding {
+	if !slices.Contains(core.KnownERC8004Profiles(), envelope.Protocol) || envelope.Kind != core.KindERC8004Binding {
 		return core.ERC8004Binding{}, fmt.Errorf("wrong binding envelope")
 	}
 	raw, err := base64.RawURLEncoding.Strict().DecodeString(envelope.Payload)

@@ -23,7 +23,7 @@ the acceptance criteria before the status table changes.
 | 4 | CLI, browser verifier and signing UI (with the signing disclosure), docs, notices | ✅ DONE | Browser and docs landed 2026-10-09; CLI (`--protocol`, `keygen --algorithm ml-dsa-65`, `verify --accept-protocol`) landed after the root tag |
 | 5 | Release tags for the root and nested modules | 🟡 in progress | Root `v0.3.0-alpha.1` tagged 2026-10-09 at `9ba79a8` and verified through proxy.golang.org; `apostille/zkbudget` and `cmd/apostille` tags follow in release order |
 | 6 | Hosted service and API client (`iff-trust-oracle`) | 🟡 in progress: client side done in this branch; server in iff-trust-oracle | External; ML-DSA issuer key provisioned by the owner |
-| 7 | Default signing version switches from 0.1 to 0.3 | ⬜ pending | Gated on Phase 6 deployed, the announced date and the alpha notice |
+| 7 | Default signing version switches from 0.1 to 0.3 | 🟡 done for SDK, CLI and browser defaults; hosted cutover tracked in `iff-trust-oracle` | SDK/CLI/browser defaults landed in `v0.4.0-alpha.1` (to be tagged after merge): see Phase 7 outcome. Hosted 0.1 issuance has not stopped |
 
 ## Approved decisions (do not relitigate)
 
@@ -147,7 +147,7 @@ profile; the verification code has no `if protocol == "0.3"` branch.
 
 - `--protocol` gains `0.3`.
 - Key generation gains an algorithm choice (`ed25519` or `ml-dsa-65`). The
-  default stays `ed25519` until Phase 7.
+  default was `ed25519` until Phase 7; it is now `ml-dsa-65`.
 - `verify --accept-protocol` accepts `0.3`, and its output shows the bundle's
   protocol.
 - A 0.3 signing command refuses a 0.1 key file, and a 0.1 or 0.2 command refuses
@@ -400,6 +400,29 @@ Dependencies:
 
 The SDK and CLI defaults become 0.3, and hosted 0.1 issuance stops. 0.1 and 0.2
 signing stay behind explicit options.
+
+#### Phase 7 outcome (SDK, CLI and browser defaults)
+
+Done in the `v0.4.0-alpha.1` source (the owner accepted changing defaults; there
+are no external users). The hosted cutover (stopping Core 0.1 issuance) is
+tracked in `iff-trust-oracle` and has not happened.
+
+- **Natural version.** A signer's natural version is Core 0.1 for Ed25519 and
+  Core 0.3 for ML-DSA-65. Go `Sign`, `NewHeader`, `CreateRegistration`,
+  `CreateStatement` and `CreateGrant`, and JS `sign`, `header`,
+  `createRegistration`, `createProducerStatement` (statements and grants already
+  follow their registration) use it. An Ed25519 signer signs exactly the bytes it
+  signed before; an ML-DSA-65 signer, which the version-less forms used to refuse,
+  now signs Core 0.3. The explicit `…For` forms and explicit `protocol`
+  arguments are unchanged, and the only way to sign Core 0.2 stays explicit.
+- **Key generation.** CLI `keygen --algorithm` and JS `generateKeyFile()` default
+  to ML-DSA-65. Ed25519 stays one option away.
+- **CLI.** `--protocol` on `delegate`, `sign` and `grant` defaults to `auto`, the
+  key file's natural version.
+- **Browser.** The key algorithm selects default to ML-DSA-65.
+- **Deliberately unchanged.** Verification of every version, Ed25519 keys, the
+  ZK budget profile and `verify-erc8004` in the CLI (Core 0.1 only), and hosted
+  login for Ed25519 workspaces.
 
 ## User-input checklist
 
