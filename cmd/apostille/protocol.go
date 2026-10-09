@@ -136,3 +136,24 @@ func requireBundleCore01(profile, what string, bundle core.Bundle) error {
 	}
 	return nil
 }
+
+// erc8004ProfilesFor maps accepted Core versions to the ERC-8004 binding
+// profiles over them. An empty list accepts every known binding profile; Core
+// 0.2 has no binding profile.
+func erc8004ProfilesFor(accepted protocolList) ([]string, error) {
+	if len(accepted) == 0 {
+		return core.KnownERC8004Profiles(), nil
+	}
+	profiles := make([]string, 0, len(accepted))
+	for _, protocol := range accepted {
+		switch protocol {
+		case core.Protocol:
+			profiles = append(profiles, core.ERC8004Profile)
+		case core.Protocol03:
+			profiles = append(profiles, core.ERC8004Profile03)
+		default:
+			return nil, fmt.Errorf("--accept-protocol %s: no ERC-8004 binding profile exists for that Core version; use 0.1 or 0.3", protocolLabel(protocol))
+		}
+	}
+	return profiles, nil
+}

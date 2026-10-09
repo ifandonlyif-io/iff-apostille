@@ -5,8 +5,8 @@ go 1.27.0
 toolchain go1.27.2
 
 require (
-	github.com/ifandonlyif-io/iff-apostille v0.3.0-alpha.1
-	github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget v0.3.0-alpha.1
+	github.com/ifandonlyif-io/iff-apostille v0.4.0-alpha.1
+	github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget v0.4.0-alpha.1
 	github.com/stretchr/testify v1.11.1
 )
 

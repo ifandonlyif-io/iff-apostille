@@ -31,9 +31,10 @@ release.
   `testdata/apostille/erc8004-binding-0.3.json`. A Core 0.2 registration has no binding
   profile, and a binding 0.1 now refuses any registration that is not Core 0.1.
   Hosted support for 0.3 is deployment pending.
-- **Module pins.** `cmd/apostille` and `apostille/zkbudget` pin the root module; the
-  root tag comes first and the pins are then bumped. The CLI's `verify-erc8004` still
-  covers binding profile 0.1 only until then.
+- **Module pins.** `apostille/zkbudget/v0.4.0-alpha.1` and `cmd/apostille/v0.4.0-alpha.1`
+  pin root `v0.4.0-alpha.1`. In that CLI release `verify-erc8004` verifies binding
+  profiles 0.1 and 0.3, refuses mixed documents, and gains `--accept-protocol 0.1|0.3`
+  (repeatable) to require, for example, post-quantum administrator and issuer signatures.
 - **Go/JS API changes.** JS `createERC8004Request` takes any `Signer` (it was
   Ed25519-only); `header`, `sign`, `createRegistration` and `createProducerStatement`
   default to the signer's natural protocol instead of Core 0.1.

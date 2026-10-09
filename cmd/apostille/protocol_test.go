@@ -410,11 +410,9 @@ func TestLegacyExpandedAndWrongFormKeyFilesAreRefused(t *testing.T) {
 	}
 }
 
-func TestCore01OnlyProfilesRefuseNewerCore(t *testing.T) {
+func TestVerifyERC8004RefusesMixedCoreVersions(t *testing.T) {
 	dir := t.TempDir()
-	const wantSuffix = "profile covers Core 0.1 only"
-
-	// ERC-8004: a binding document that carries a Core 0.2 or 0.3 registration.
+	// A binding 0.1 document that carries a Core 0.2 or 0.3 registration.
 	document, issuer, _ := testERC8004BindingForCLI(t, cliNow)
 	for _, protocol := range []string{core.Protocol02, core.Protocol03} {
 		algorithm := "ed25519"
@@ -436,9 +434,14 @@ func TestCore01OnlyProfilesRefuseNewerCore(t *testing.T) {
 		bindingPath := filepath.Join(dir, "binding-"+algorithm+".json")
 		require.NoError(t, os.WriteFile(bindingPath, raw, 0o644))
 		output, _, err := invokeCLI(t, cliNow, "verify-erc8004", "--binding", bindingPath)
-		require.ErrorContains(t, err, "binding delegation is Core "+protocol[len(protocol)-3:]+": the ERC-8004 binding "+wantSuffix)
-		require.Empty(t, output)
+		require.ErrorContains(t, err, "registration Core version does not match the ERC-8004 binding profile")
+		require.Contains(t, output, `"valid": false`)
 	}
+}
+
+func TestCore01OnlyProfilesRefuseNewerCore(t *testing.T) {
+	dir := t.TempDir()
+	const wantSuffix = "profile covers Core 0.1 only"
 
 	// ZK: a Core 0.3 key, a Core 0.2 registration, and Core 0.3 source bundles.
 	mlKey := generateKeyWith(t, dir, "z-ml", "ml-dsa-65")

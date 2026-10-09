@@ -2,7 +2,7 @@
 
 [English](README.md) · [日本語](README.ja.md) · [繁體中文](README.zh-hant.md) · [简体中文](README.zh-hans.md)
 
-[Website](https://ifandonlyif.io/apostille) · [Downloads and installation](https://ifandonlyif.io/apostille/downloads) · [Alpha release](https://github.com/ifandonlyif-io/iff-apostille/releases/tag/v0.3.0-alpha.1)
+[Website](https://ifandonlyif.io/apostille) · [Downloads and installation](https://ifandonlyif.io/apostille/downloads) · [Alpha release](https://github.com/ifandonlyif-io/iff-apostille/releases/tag/v0.4.0-alpha.1)
 
 Portable, issuer-neutral signatures for agent artifacts. An agent signs a file
 manifest, an administrator delegates its key, and an issuer records the checks
@@ -10,14 +10,14 @@ it performed. A recipient can verify the resulting bundle locally, without an
 IFF account or an Internet connection. You can use the SDK or implement the
 published specification and conformance vectors yourself.
 
-**Alpha.** Core protocol `0.1`, the Go module release `v0.3.0-alpha.1` and the
+**Alpha.** Core protocol `0.1`, the Go module release `v0.4.0-alpha.1` and the
 SDK package `0.1.0-alpha.1` are different version namespaces. The Go root module
 (packages `apostille`, `apostille/client`, `util`) is released as
-`v0.3.0-alpha.1`, and the CLI and ZK modules carry the tags
-`cmd/apostille/v0.3.0-alpha.1` and `apostille/zkbudget/v0.3.0-alpha.1`. Go 1.27
+`v0.4.0-alpha.1`, and the CLI and ZK modules carry the tags
+`cmd/apostille/v0.4.0-alpha.1` and `apostille/zkbudget/v0.4.0-alpha.1`. Go 1.27
 is required for module consumers. No npm package and no CLI binaries are
 published.
-Core 0.2 and Core 0.3 are released in `v0.3.0-alpha.1`, which contains Core 0.1,
+Core 0.2 and Core 0.3 are released in `v0.4.0-alpha.1`, which contains Core 0.1,
 0.2 and 0.3; see the [roadmap](#roadmap).
 
 This release includes a conformance case file per Core version (215 cases for
@@ -32,7 +32,7 @@ pinned public Go release.
   an IFF account, a key lookup or a network connection. With a Go toolchain:
 
   ```sh
-  go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.3.0-alpha.1
+  go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.4.0-alpha.1
   ```
 
   Add `GOBIN` (or `GOPATH/bin` when unset) to `PATH`. Follow the
@@ -41,10 +41,10 @@ pinned public Go release.
 - **Go developers** import the released module:
 
   ```sh
-  go get github.com/ifandonlyif-io/iff-apostille@v0.3.0-alpha.1
+  go get github.com/ifandonlyif-io/iff-apostille@v0.4.0-alpha.1
   ```
 
-  API reference: [pkg.go.dev](https://pkg.go.dev/github.com/ifandonlyif-io/iff-apostille@v0.3.0-alpha.1/apostille).
+  API reference: [pkg.go.dev](https://pkg.go.dev/github.com/ifandonlyif-io/iff-apostille@v0.4.0-alpha.1/apostille).
   Integration guide: [docs/apostille/SDK.md](docs/apostille/SDK.md).
 - **JavaScript developers** pack the SDK from this checkout (see below); a
   registry release is planned separately.
@@ -104,7 +104,7 @@ Ed25519 verification and a versioned namespace. Core 0.3
 ([specification](docs/apostille/spec/core-0.3.md),
 [schema](web/apostille-0.3.schema.json)) keeps that grammar and signs with
 ML-DSA-65 (FIPS 204). Go and JavaScript reference implementations, vectors and
-conformance cases are in this source tree and released in `v0.3.0-alpha.1`; the
+conformance cases are in this source tree and released in `v0.4.0-alpha.1`; the
 browser verifier checks all three versions, and the CLI supports them
 (`--protocol 0.1|0.2|0.3`, `keygen --algorithm ml-dsa-65`, `verify
 --accept-protocol`). Starting with `v0.4.0-alpha.1` (to be tagged
@@ -117,7 +117,7 @@ Core 0.1 and 0.3 (never 0.2); see [API.md](docs/apostille/API.md). The
 [0.2](docs/apostille/proposals/core-0.2-implementation-plan.md) and
 [0.3](docs/apostille/proposals/core-0.3-implementation-plan.md) implementation
 plans track their status. An npm release of the JS SDK and prebuilt CLI binaries
-are also planned; neither is part of `v0.3.0-alpha.1`.
+are also planned; neither is part of `v0.4.0-alpha.1`.
 
 ## What verification means
 

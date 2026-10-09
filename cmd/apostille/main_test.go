@@ -335,3 +335,73 @@ func TestWrongAgentKeyAndTamperedKeyMetadataAreRejected(t *testing.T) {
 		"--registration", registrationPath, "--out", filepath.Join(dir, "tampered-statement.json"))
 	require.ErrorContains(t, err, "metadata does not match")
 }
+
+func newMLDSASignerForCLI(t *testing.T) *core.Signer {
+	t.Helper()
+	seed, _, err := core.GenerateMLDSAKey()
+	require.NoError(t, err)
+	signer, err := core.NewMLDSASigner(seed)
+	require.NoError(t, err)
+	return signer
+}
+
+// testERC8004Binding03ForCLI issues a binding profile 0.3 document over a Core
+// 0.3 registration with ML-DSA-65 administrator, agent and issuer keys.
+func testERC8004Binding03ForCLI(t *testing.T, issued time.Time) (core.ERC8004BindingDocument, string, *core.Signer) {
+	t.Helper()
+	issued = issued.UTC().Truncate(time.Second)
+	admin, agent, issuerSigner := newMLDSASignerForCLI(t), newMLDSASignerForCLI(t), newMLDSASignerForCLI(t)
+	const issuer = "https://issuer.example/apostille"
+	registration, err := core.CreateRegistration(admin, agent, issuer, 4*time.Hour, issued)
+	require.NoError(t, err)
+	require.Equal(t, core.Protocol03, registration.Delegation.Protocol)
+	request, err := core.CreateERC8004Request(admin, registration, core.ERC8004Identity{
+		ChainID: "8453", RegistryAddress: "0x1111111111111111111111111111111111111111", ERC8004AgentID: "7", OwnerAddress: "0x2222222222222222222222222222222222222222",
+	}, issuer, issued)
+	require.NoError(t, err)
+	document, err := issuerSigner.IssueERC8004Binding(registration, request, "0x"+strings.Repeat("1", 130), core.ERC8004Observation{
+		BlockNumber: "1", BlockHash: "0x" + strings.Repeat("2", 64), BlockTimestamp: issued.Format(core.TimestampLayout),
+	}, issuer, issued)
+	require.NoError(t, err)
+	require.Equal(t, core.ERC8004Profile03, document.Protocol)
+	return document, issuer, issuerSigner
+}
+
+func TestVerifyERC8004Profile03AndAcceptProtocol(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name string, document core.ERC8004BindingDocument) string {
+		raw, err := json.Marshal(document)
+		require.NoError(t, err)
+		path := filepath.Join(dir, name)
+		require.NoError(t, os.WriteFile(path, raw, 0o644))
+		return path
+	}
+	doc03, issuer, signer03 := testERC8004Binding03ForCLI(t, cliNow)
+	path03 := write("binding-0.3.json", doc03)
+	doc01, _, _ := testERC8004BindingForCLI(t, cliNow)
+	path01 := write("binding-0.1.json", doc01)
+
+	output, _, err := invokeCLI(t, cliNow.Add(time.Minute), "verify-erc8004", "--binding", path03,
+		"--issuer", issuer, "--key-id", signer03.KeyID(), "--require-trusted")
+	require.NoError(t, err)
+	var result erc8004VerificationOutput
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+	require.True(t, result.Valid)
+	require.True(t, result.Trusted)
+	require.Equal(t, core.ERC8004Profile03, result.Protocol)
+
+	// --accept-protocol narrows the accepted binding profiles by Core version.
+	_, _, err = invokeCLI(t, cliNow.Add(time.Minute), "verify-erc8004", "--binding", path03, "--accept-protocol", "0.3")
+	require.NoError(t, err)
+	output, _, err = invokeCLI(t, cliNow.Add(time.Minute), "verify-erc8004", "--binding", path03, "--accept-protocol", "0.1")
+	require.ErrorContains(t, err, "binding profile is not accepted")
+	require.Contains(t, output, `"protocol_not_accepted"`)
+	output, _, err = invokeCLI(t, cliNow.Add(time.Minute), "verify-erc8004", "--binding", path01, "--accept-protocol", "0.3")
+	require.ErrorContains(t, err, "binding profile is not accepted")
+	require.Contains(t, output, `"protocol_not_accepted"`)
+	_, _, err = invokeCLI(t, cliNow.Add(time.Minute), "verify-erc8004", "--binding", path01, "--accept-protocol", "0.1", "--accept-protocol", "0.3")
+	require.NoError(t, err)
+	output, _, err = invokeCLI(t, cliNow.Add(time.Minute), "verify-erc8004", "--binding", path01, "--accept-protocol", "0.2")
+	require.ErrorContains(t, err, "no ERC-8004 binding profile exists for that Core version")
+	require.Empty(t, output)
+}
