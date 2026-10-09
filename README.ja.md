@@ -2,38 +2,38 @@
 
 [English](README.md) · [日本語](README.ja.md) · [繁體中文](README.zh-hant.md) · [简体中文](README.zh-hans.md)
 
-[Web サイト](https://ifandonlyif.io/ja/apostille) · [ダウンロード・インストール](https://ifandonlyif.io/ja/apostille/downloads) · [Alpha リリース](https://github.com/ifandonlyif-io/iff-apostille/releases/tag/v0.1.0-alpha.1)
+[Web サイト](https://ifandonlyif.io/ja/apostille) · [ダウンロード・インストール](https://ifandonlyif.io/ja/apostille/downloads) · [Alpha リリース](https://github.com/ifandonlyif-io/iff-apostille/releases/tag/v0.3.0-alpha.1)
 
 Agent が生成したファイルに、持ち運べる issuer 非依存の署名を付けます。Agent がファイルの manifest に署名し、管理者がその鍵に権限を委任し、issuer が実施した確認を記録します。受信者は IFF アカウントやインターネット接続なしで bundle をローカル検証できます。SDK を利用するほか、公開仕様と適合性テストベクトルに基づく独自実装も可能です。
 
-**Alpha 版です。** Core protocol `0.1`、Go module のリリース `v0.1.0-alpha.1`、SDK package の `0.1.0-alpha.1` は別のバージョン体系です。Go root module（`apostille`、`apostille/client`、`util`）は `v0.1.0-alpha.1` として公開済みです。CLI と ZK module のタグは、それぞれ `cmd/apostille/v0.1.0-alpha.1` と `apostille/zkbudget/v0.1.0-alpha.1` です。npm package とビルド済み CLI binary は未公開です。Core 0.2 と Core 0.3 はこのソースツリーに実装されていますが、`v0.1.0-alpha.1` には含まれません。[ロードマップ](#roadmap)を参照してください。
+**Alpha 版です。** Core protocol `0.1`、Go module のリリース `v0.3.0-alpha.1`、SDK package の `0.1.0-alpha.1` は別のバージョン体系です。Go root module（`apostille`、`apostille/client`、`util`）は `v0.3.0-alpha.1` として公開済みです。CLI と ZK module のタグは、それぞれ `cmd/apostille/v0.3.0-alpha.1` と `apostille/zkbudget/v0.3.0-alpha.1` です。module を利用するには Go 1.27 が必要です。npm package とビルド済み CLI binary は未公開です。Core 0.2 と Core 0.3 は `v0.3.0-alpha.1` で公開済みで、このリリースには Core 0.1、0.2、0.3 が含まれます。[ロードマップ](#roadmap)を参照してください。
 
-このリリースには、215 件の共通適合性テストケース、Go/JavaScript 差分テスト、fuzz テスト、未対の Unicode surrogate 処理の修正が含まれます。IFF の hosted service は、この公開 Go リリースをバージョン固定で利用しています。
+このリリースには、Core のバージョンごとの適合性テストケース（0.1 は 215 件、0.2 は 647 件、0.3 は 676 件）、0.2 と 0.3 で差分のない Go/JavaScript 差分テスト、fuzz テストが含まれます。IFF の hosted service は、公開 Go リリースをバージョン固定で利用しています。
 
 ## 用途別の入口
 
 - **Bundle の受信者**：hosted service またはこの repository の browser verifier、あるいはローカル CLI を利用します。どちらの検証も IFF アカウント、鍵の問い合わせ、ネットワーク接続を必要としません。Go toolchain があれば、次のコマンドで CLI をインストールできます。
 
   ```sh
-  go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.1.0-alpha.1
+  go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.3.0-alpha.1
   ```
 
   `GOBIN`（未設定なら `GOPATH/bin`）を `PATH` に追加してください。[CLI 検証ガイド](docs/apostille/CLI.md)に従い、独立して選んだ issuer/key pin を指定します。信頼条件の不一致でコマンドを失敗させる場合は `--require-trusted` を使用してください。
 - **Go 開発者**：公開済み module を導入します。
 
   ```sh
-  go get github.com/ifandonlyif-io/iff-apostille@v0.1.0-alpha.1
+  go get github.com/ifandonlyif-io/iff-apostille@v0.3.0-alpha.1
   ```
 
-  API reference：[pkg.go.dev](https://pkg.go.dev/github.com/ifandonlyif-io/iff-apostille@v0.1.0-alpha.1/apostille)。統合ガイド：[docs/apostille/SDK.md](docs/apostille/SDK.md)。
+  API reference：[pkg.go.dev](https://pkg.go.dev/github.com/ifandonlyif-io/iff-apostille@v0.3.0-alpha.1/apostille)。統合ガイド：[docs/apostille/SDK.md](docs/apostille/SDK.md)。
 - **JavaScript 開発者**：以下の手順で、この checkout から SDK package を作成します。Registry への公開は別途予定しています。
 - **レビュアー・独立実装の開発者**：仕様、schema、適合性テストケース、GitHub のタグ付きソースから始めてください。
 
 | 構成要素 | ソース | 提供するもの |
 | --- | --- | --- |
 | Core 0.1 | [仕様](docs/apostille/spec/core-0.1.md)、[schema](web/apostille-0.1.schema.json)、[vectors](testdata/apostille/core-0.1.json)、[cases](testdata/apostille/core-0.1-cases.json) | 正確な bytes と、受理・拒否の検証ケース |
-| Core 0.2 | [仕様](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)、[vectors](testdata/apostille/core-0.2.json)、[cases](testdata/apostille/core-0.2-cases.json) | 厳密な識別子文法と厳格な Ed25519。未リリース |
-| Core 0.3 | [仕様](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)、[vectors](testdata/apostille/core-0.3.json)、[cases](testdata/apostille/core-0.3-cases.json) | ML-DSA-65（FIPS 204）署名。未リリース |
+| Core 0.2 | [仕様](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)、[vectors](testdata/apostille/core-0.2.json)、[cases](testdata/apostille/core-0.2-cases.json) | 厳密な識別子文法と厳格な Ed25519。`v0.3.0-alpha.1` で公開済み |
+| Core 0.3 | [仕様](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)、[vectors](testdata/apostille/core-0.3.json)、[cases](testdata/apostille/core-0.3-cases.json) | ML-DSA-65（FIPS 204）署名。`v0.3.0-alpha.1` で公開済み |
 | Go | [core](apostille/)、[API client](apostille/client/) | オフライン署名・検証と、明示的に呼び出す hosted API |
 | JavaScript / TypeScript | [SDK](sdk/apostille-js/) | オフラインの default import と、独立した `/client` entry |
 | ローカル CLI | [コマンド](docs/apostille/CLI.md) | 鍵生成、署名、ローカル発行、検証 |
@@ -68,7 +68,7 @@ npm pack ./sdk/apostille-js --pack-destination ./dist
 
 ## ロードマップ
 
-Core 0.2（[仕様](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）は、厳密な識別子文法、厳格な Ed25519 検証、バージョン付き namespace を追加します。Core 0.3（[仕様](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）はその文法を維持し、ML-DSA-65（FIPS 204）で署名します。Go と JavaScript の reference implementation、vectors、適合性テストケースはこのソースツリーにあり、browser verifier は 3 つのバージョンすべてを検証します。CLI、hosted service、hosted API client はまだ 0.2 と 0.3 に対応していません。切り替えが告知されるまで、署名の既定バージョンは Core 0.1 のままです。0.2 と 0.3 は明示的に選ぶオプションです。状態は[0.2](docs/apostille/proposals/core-0.2-implementation-plan.md)と[0.3](docs/apostille/proposals/core-0.3-implementation-plan.md)の実装計画で管理しています。JS SDK の npm 公開とビルド済み CLI binary も予定していますが、いずれも `v0.1.0-alpha.1` には含まれません。
+Core 0.2（[仕様](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）は、厳密な識別子文法、厳格な Ed25519 検証、バージョン付き namespace を追加します。Core 0.3（[仕様](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）はその文法を維持し、ML-DSA-65（FIPS 204）で署名します。Go と JavaScript の reference implementation、vectors、適合性テストケースはこのソースツリーにあり、`v0.3.0-alpha.1` で公開済みです。browser verifier は 3 つのバージョンすべてを検証し、CLI も対応しています（`--protocol 0.1|0.2|0.3`、`keygen --algorithm ml-dsa-65`、`verify --accept-protocol`）。hosted service と hosted API client はまだ 0.2 と 0.3 に対応していません。切り替えが告知されるまで、署名の既定バージョンは Core 0.1 のままです。0.2 と 0.3 は明示的に選ぶオプションです。状態は[0.2](docs/apostille/proposals/core-0.2-implementation-plan.md)と[0.3](docs/apostille/proposals/core-0.3-implementation-plan.md)の実装計画で管理しています。JS SDK の npm 公開とビルド済み CLI binary も予定していますが、いずれも `v0.3.0-alpha.1` には含まれません。
 
 ## 検証結果の意味
 

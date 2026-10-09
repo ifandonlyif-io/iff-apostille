@@ -1,12 +1,31 @@
 # Source alpha release preparation
 
-`v0.1.0-alpha.1` is the first release: root Go module `v0.1.0-alpha.1`
+`v0.3.0-alpha.1` is the second alpha release: root Go module `v0.3.0-alpha.1`
+(packages `apostille`, `apostille/client`, `util`), `apostille/zkbudget/v0.3.0-alpha.1`
+and `cmd/apostille/v0.3.0-alpha.1`, tagged in that order. The root tag was cut
+on 2026-10-09 at merge commit `9ba79a8` after CI passed, and
+`apostille/zkbudget/v0.3.0-alpha.1` at `a5ad03c` (its pin of that root) after CI
+passed; the CLI tag follows the merge of the CLI branch. Root module checksum
+`h1:Dk+ZRfacmxNDixLnxDt/hYrAxfbYC67hThrMkkmFe+M=`. Verified from a clean module
+cache through proxy.golang.org: a consumer verifies the published Core 0.1 and
+Core 0.3 known-answer bundles with issuer and key pins (`accepted_by_policy`).
+The `zkbudget` and CLI tags are not covered by that proxy check.
+It contains Core 0.1, Core 0.2 (exact identifier grammar, strict Ed25519) and
+Core 0.3 (pure ML-DSA-65, FIPS 204) in the Go root module, the browser
+verifier/console and the JS SDK source; the CLI supports `--protocol 0.1|0.2|0.3`,
+`keygen --algorithm ml-dsa-65` and `verify --accept-protocol`. Core 0.1 remains
+the default signing version until a switch is announced. Go 1.27 is required for
+module consumers. Not included: no npm package, no prebuilt CLI binaries, and the
+hosted service and hosted API client do not support Core 0.2 or 0.3 yet; the
+ERC-8004 binding and ZK budget profiles cover Core 0.1 only.
+
+`v0.1.0-alpha.1` was the first release: root Go module `v0.1.0-alpha.1`
 (packages `apostille`, `apostille/client`, `util`), `apostille/zkbudget/v0.1.0-alpha.1`
 and `cmd/apostille/v0.1.0-alpha.1`, tagged in that order on 2026-09-22 after CI
 passed on `d2c72c8`. No CLI binary release and no npm package are published.
 Preserve protocol/profile identifiers and vector bytes independently of software
-package versions. Core 0.2 and 0.3 are implemented in the source tree but not in
-this release; every release note must say which Core versions its tag contains,
+package versions. Core 0.2 and 0.3 were implemented in the source tree but not in
+that release (they are in `v0.3.0-alpha.1`); every release note must say which Core versions its tag contains,
 and that 0.1 remains the default signing version until a switch is announced.
 
 ## Validate a clean source checkout

@@ -20,7 +20,7 @@ possible so the upstream copy stays a file copy.
 | 1 | Normative `spec/core-0.2.md` + `web/apostille-0.2.schema.json` | ✅ DONE | Accepted 2026-09-22 after review (no findings); normative for 0.2 artifacts, no implementation yet |
 | 2 | Go: profiles, identifier grammar, strict Ed25519, no-mixing, explicit-version signing, 0.2 vectors | ✅ DONE | Landed 2026-10-09; see Phase 2 outcome. JS side and the 0.2 differential are Phase 3 |
 | 3 | JS: same rules, vendored curve library, consumers for 0.2 vectors, Go/JS differential at 0.2 | ✅ DONE | Landed 2026-10-09 with Core 0.3 Phase 3; `@noble/curves` 2.4.0 confirmed by the user; 0.2 differential table empty |
-| 4 | CLI, browser verifier UI, docs, notices | ⬜ pending | Needs Phases 2 and 3; new UI strings need reviewed translations |
+| 4 | CLI, browser verifier UI, docs, notices | ✅ DONE | Landed with Core 0.3 Phase 4 (browser and docs 2026-10-09; CLI `--protocol 0.2` after the root tag) |
 | 5 | Hosted service and API client (lives in `iff-trust-oracle`) | ⬜ pending | External to this repository; also carries the login/registration key check |
 | 6 | Default signing version switches to 0.2 | ⬜ pending | Gated on Phase 5 deployed, registrations migrated, announced date |
 

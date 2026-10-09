@@ -20,8 +20,8 @@ the acceptance criteria before the status table changes.
 | 1 | `spec/core-0.3.md` + `web/apostille-0.3.schema.json` | ✅ DONE | Accepted 2026-10-09; the schema is the 0.2 schema with 16 lines changed (`$id`, title, protocol constants, algorithm, key and signature lengths) |
 | 2 | Go: 0.3 profile, ML-DSA-65 signer and verifier, 0.3 key files, login 0.3 helpers, 0.3 vectors | ✅ DONE | Landed 2026-10-09; see Phase 2 outcome |
 | 3 | JS: vendored `@noble/post-quantum`, 0.3 verify and sign, consumers for 0.3 vectors, Go/JS differential at 0.3 | ✅ DONE | Landed 2026-10-09 with 0.2 Phase 3; 0.3 differential table empty |
-| 4 | CLI, browser verifier and signing UI (with the signing disclosure), docs, notices | 🟡 partial | Browser and docs landed 2026-10-09; CLI waits for the root release (Phase 5); translations await owner review |
-| 5 | Release tags for the root and nested modules | ⬜ pending | The user decides the tag names |
+| 4 | CLI, browser verifier and signing UI (with the signing disclosure), docs, notices | ✅ DONE | Browser and docs landed 2026-10-09; CLI (`--protocol`, `keygen --algorithm ml-dsa-65`, `verify --accept-protocol`) landed after the root tag |
+| 5 | Release tags for the root and nested modules | 🟡 in progress | Root `v0.3.0-alpha.1` tagged 2026-10-09 at `9ba79a8` and verified through proxy.golang.org; `apostille/zkbudget` and `cmd/apostille` tags follow in release order |
 | 6 | Hosted service and API client (`iff-trust-oracle`) | ⬜ pending | External; ML-DSA issuer key provisioned by the owner |
 | 7 | Default signing version switches from 0.1 to 0.3 | ⬜ pending | Gated on Phase 6 deployed, the announced date and the alpha notice |
 
@@ -367,8 +367,17 @@ Outcome: Root-module part (2026-10-09), CLI pending:
     TS2379, TS2322 and TS2345.
   - The disclosure in all four locales recommends the CLI only once a CLI release
     supports Core 0.3.
-- **CLI development.** It can proceed against an uncommitted local `replace`
-  (AGENTS.md). Only committing the pin needs the root tag.
+- **CLI (after the root tag).**
+  - `cmd/apostille` pins root `v0.3.0-alpha.1`.
+  - `keygen --algorithm ml-dsa-65` writes a 0.3 key file.
+  - Key files go through `ParseKeyFile`, which refuses the expanded and
+    standard-alphabet seed forms.
+  - `delegate`, `sign` and `grant` take `--protocol`. `issue` follows the
+    statement's version unless `--protocol` is given, and then it must match.
+  - `verify --accept-protocol` is repeatable.
+  - Algorithm/protocol mismatches and version mixing are refused before signing.
+  - The ERC-8004 and ZK commands refuse Core 0.2 and 0.3 input as Core-0.1-only
+    profiles.
 
 ### Phase 5 — Release
 

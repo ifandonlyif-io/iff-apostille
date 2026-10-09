@@ -85,7 +85,7 @@ not an authenticated timestamp.
 ## Core 0.2 and Core 0.3
 
 Go and JavaScript reference implementations of both versions are in this source
-tree; neither is in `v0.1.0-alpha.1`. Each version has its own files and the 0.1
+tree and released in `v0.3.0-alpha.1`. Each version has its own files and the 0.1
 files are unchanged:
 
 | File | Contents |
