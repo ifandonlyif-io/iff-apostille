@@ -47,6 +47,6 @@ security:
 # Go accepts one fuzz target per invocation. Seeds already run under `core`;
 # this target spends FUZZTIME mutating each one and is not part of `check`.
 fuzz:
-	@for target in FuzzStrictJSON FuzzVerify FuzzSignedPayload; do \
+	@for target in FuzzStrictJSON FuzzVerify FuzzSignedPayload FuzzValidIssuer02; do \
 		GOWORK=off go test -run '^$$' -fuzz "^$$target\$$" -fuzztime $(FUZZTIME) ./apostille || exit; \
 	done

@@ -244,32 +244,23 @@ func EnvelopeDigest(envelope Envelope) (string, error) {
 	return Hash(raw), nil
 }
 func signingInput(kind string, payload []byte) []byte {
-	hash := sha256.Sum256(payload)
-	return append([]byte("iff-apostille/"+kind+"/0.1\n"), hash[:]...)
+	return profile01.signingInput(kind, payload)
 }
+
+// Sign signs value as a Core 0.1 artifact. SignFor takes the version explicitly.
 func (s *Signer) Sign(kind string, value any) (Envelope, error) {
-	if !s.Enabled() {
-		return Envelope{}, errors.New("issuer signing is disabled")
-	}
-	raw, err := Canonical(value)
-	if err != nil {
-		return Envelope{}, err
-	}
-	header, err := validatePayload(kind, raw)
-	if err != nil {
-		return Envelope{}, err
-	}
-	if header.IssuerKeyID != s.KeyID() {
-		return Envelope{}, errors.New("signed key ID does not match signer")
-	}
-	return Envelope{Protocol: Protocol, Kind: kind, Payload: rawURL.EncodeToString(raw), PayloadSHA256: Hash(raw), Signature: Signature{Algorithm: Algorithm, KeyID: s.KeyID(), PublicKey: s.PublicKey(), Value: rawURL.EncodeToString(ed25519.Sign(s.key, signingInput(kind, raw)))}}, nil
+	return s.SignFor(Protocol, kind, value)
 }
 func VerifyEnvelope(envelope Envelope) (VerifiedEnvelope, error) {
-	if len(envelope.Payload) > MaxInputBytes || len(envelope.Signature.PublicKey) > 64 || len(envelope.Signature.Value) > 128 || len(envelope.Kind) > 64 {
+	if len(envelope.Payload) > MaxInputBytes || len(envelope.Kind) > 64 {
 		return VerifiedEnvelope{}, errors.New("envelope fields exceed size limit")
 	}
-	if envelope.Protocol != Protocol || envelope.Signature.Algorithm != Algorithm {
+	prof, err := profileFor(envelope.Protocol)
+	if err != nil || envelope.Signature.Algorithm != prof.algorithm {
 		return VerifiedEnvelope{}, errors.New("unsupported envelope protocol or algorithm")
+	}
+	if len(envelope.Signature.PublicKey) > prof.fieldLimit(prof.publicKeySize) || len(envelope.Signature.Value) > prof.fieldLimit(prof.signatureSize) {
+		return VerifiedEnvelope{}, errors.New("envelope fields exceed size limit")
 	}
 	raw, err := rawURL.DecodeString(envelope.Payload)
 	if err != nil || len(raw) == 0 || len(raw) > MaxInputBytes/2 || rawURL.EncodeToString(raw) != envelope.Payload {
@@ -285,15 +276,21 @@ func VerifyEnvelope(envelope Envelope) (VerifiedEnvelope, error) {
 	if err != nil || !bytes.Equal(canonical, raw) {
 		return VerifiedEnvelope{}, errors.New("payload is not canonical JSON")
 	}
-	pub, err := ParsePublicKey(envelope.Signature.PublicKey)
+	pub, err := prof.decodePublicKey(envelope.Signature.PublicKey)
 	if err != nil || Fingerprint(pub) != envelope.Signature.KeyID {
 		return VerifiedEnvelope{}, errors.New("key fingerprint mismatch")
 	}
-	signature, err := rawURL.DecodeString(envelope.Signature.Value)
-	if err != nil || len(signature) != ed25519.SignatureSize || rawURL.EncodeToString(signature) != envelope.Signature.Value || !ed25519.Verify(pub, signingInput(envelope.Kind, raw), signature) {
-		return VerifiedEnvelope{}, errors.New("invalid source signature")
+	if err := prof.checkKey(pub); err != nil {
+		return VerifiedEnvelope{}, err
 	}
-	header, err := validatePayload(envelope.Kind, raw)
+	signature, err := prof.decodeSignature(envelope.Signature.Value)
+	if err != nil {
+		return VerifiedEnvelope{}, err
+	}
+	if err := prof.verify(pub, prof.signingInput(envelope.Kind, raw), signature); err != nil {
+		return VerifiedEnvelope{}, err
+	}
+	header, err := validatePayload(prof, envelope.Kind, raw)
 	if err != nil {
 		return VerifiedEnvelope{}, err
 	}

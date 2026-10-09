@@ -18,7 +18,7 @@ possible so the upstream copy stays a file copy.
 | --- | --- | --- | --- |
 | 0 | Land the 0.1 conformance work this plan builds on | ✅ DONE | On `main` and released as `v0.1.0-alpha.1` (2026-09-22); the hosted service consumes that tag, so nothing is upstreamed by copy any more |
 | 1 | Normative `spec/core-0.2.md` + `web/apostille-0.2.schema.json` | ✅ DONE | Accepted 2026-09-22 after review (no findings); normative for 0.2 artifacts, no implementation yet |
-| 2 | Go: profiles, identifier grammar, strict Ed25519, no-mixing, explicit-version signing, 0.2 vectors | ⬜ pending | Needs Phase 1 |
+| 2 | Go: profiles, identifier grammar, strict Ed25519, no-mixing, explicit-version signing, 0.2 vectors | ✅ DONE | Landed 2026-10-09; see Phase 2 outcome. JS side and the 0.2 differential are Phase 3 |
 | 3 | JS: same rules, vendored curve library, consumers for 0.2 vectors, Go/JS differential at 0.2 | ⬜ pending | Needs Phase 2 vectors; user confirms the vendored library |
 | 4 | CLI, browser verifier UI, docs, notices | ⬜ pending | Needs Phases 2 and 3; new UI strings need reviewed translations |
 | 5 | Hosted service and API client (lives in `iff-trust-oracle`) | ⬜ pending | External to this repository; also carries the login/registration key check |
@@ -376,7 +376,41 @@ processes; every C5 vector present, including the mixed-order key; the
 reject-with-intended-reason self-check pattern from the 0.1 generator applied to
 every 0.2 reject case; upstream list produced.
 
-Outcome: (append when landed)
+Outcome (2026-10-09):
+
+- **What landed.** The profile table (`apostille/profile.go`), strict Ed25519 on
+  `filippo.io/edwards25519` v1.2.0 (`apostille/strict.go`), the byte-level
+  identifier validator (`apostille/identifier02.go`), explicit-version signing
+  (`apostille/sign_version.go`), no-mixing in bundle, registration, grant and
+  issuance checks, and `VerifyOptions.AcceptedProtocols`. A nil list accepts
+  every known version; any other list, even an empty one, accepts only its
+  members.
+- **Vectors.** `core-0.2.json` (sha256 `a95423ed…4c3f`) and `core-0.2-cases.json`
+  (sha256 `bc09aea2…a85e`, 1.23 MB) are identical across two generator
+  processes. The case file has 240 bundle cases (28 accept, 212 reject), 54
+  strict JSON cases and 353 identifier cases. Among the bundle cases are 33
+  Ed25519 rejects: all eight small-order and three mixed-order `A`, non-canonical
+  `A` and `R`, identity `R` with `S = k·a` on an honest key, and `S = L`. Each
+  reject that a cofactorless verifier would accept is asserted to pass
+  `crypto/ed25519`, so it isolates the intended rule.
+- **Verified.** `make check` passes with no skips; `make fuzz` (four targets
+  including `FuzzValidIssuer02`) and the module-isolation script pass. `go mod
+  tidy` is clean in all three modules. The 0.1 vector and case file are
+  byte-identical. Gotcha 3 was re-verified against v1.2.0 by
+  `TestCurveLibraryAssumptions`.
+- **Deviations.**
+  - The 0.1 generator's expected reason for `reject/wrong-bundle-protocol` and
+    `reject/wrong-envelope-protocol` is now "bundle mixes protocol versions",
+    because 0.2 is a known version. The 0.1 bytes and verdicts are unchanged.
+  - The identifier vectors test hosts of 248 (accept) and 249, 253 and 254
+    bytes (reject). The 256-byte identifier limit is reached before the 253-byte
+    host limit.
+- **`make security`.** It reports nine standard-library advisories in the pinned
+  `toolchain go1.26.6`. The same nine appear on the untouched tree; with
+  go1.26.9 all three modules report none. The Core 0.3 plan moves the toolchain
+  to go1.27.2.
+- **Not done here.** The Go/JS differential at 0.2, which needs Phase 3's JS
+  side.
 
 ### Phase 3 — JS reference implementation and cross-checks
 

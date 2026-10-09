@@ -73,8 +73,8 @@ func TestStrictJSONDoesNotManufactureReplacementCharacters(t *testing.T) {
 	}
 	// A signed payload spelled with such an escape was never canonical, so
 	// envelope verification rejected it before this rule and still does.
-	b, s := producerOnly(t)
-	p, err := Canonical(producerOnlyStatement(s))
+	b, s := gen01.producerOnly(t)
+	p, err := Canonical(gen01.producerOnlyStatement(s))
 	if err != nil {
 		t.Fatal(err)
 	}

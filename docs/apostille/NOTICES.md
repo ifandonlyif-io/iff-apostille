@@ -18,6 +18,13 @@ Go Core uses the Apache-2.0 JSON Canonicalization reference implementation
 [upstream copyright/license notice](notices/json-canonicalization-LICENSE) and
 the [complete Apache-2.0 terms](notices/APACHE-2.0.txt) when redistributing it.
 
+Go Core also uses `filippo.io/edwards25519` `v1.2.0` (BSD-3-Clause, module hash
+`h1:crnVqOiS4jqYleHd9vaKZ+HKtHfllngJIiOpNpoJsjo=`, go.mod hash
+`h1:xzAOLCNug/yB62zG1bQ8uziwrIqIuxhctzJT18Q77mc=`) for Core 0.2 strict Ed25519
+point decoding and arithmetic. Preserve its [copyright and license
+notice](notices/edwards25519-LICENSE) when redistributing it. The CLI and the
+ZK module import the root module and so carry the same dependency.
+
 The CLI also imports the experimental ZK module: it is **not** limited to
 standard library/Core/JCS. Its runtime dependency graph includes gnark
 `v0.16.3`, gnark-crypto `v0.21.0` (Apache-2.0), zerolog `v1.35.1` (MIT) and

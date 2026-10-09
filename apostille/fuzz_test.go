@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -24,19 +23,24 @@ func fuzzSigner(f testing.TB, n byte) *Signer {
 	return s
 }
 
-// fuzzConformanceFile reads and decodes testdata/apostille/core-0.1-cases.json
-// once, for seeding; it is never written to.
-func fuzzConformanceFile(f *testing.F) conformanceFile {
+// fuzzConformanceFiles reads and decodes both versions' case files
+// (testdata/apostille/core-0.1-cases.json and core-0.2-cases.json) for
+// seeding; they are never written to.
+func fuzzConformanceFiles(f *testing.F) []conformanceFile {
 	f.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "testdata", "apostille", "core-0.1-cases.json"))
-	if err != nil {
-		f.Fatalf("reading conformance cases: %v", err)
+	var files []conformanceFile
+	for _, g := range []caseGen{gen01, gen02} {
+		raw, err := os.ReadFile(g.casesPath())
+		if err != nil {
+			f.Fatalf("reading conformance cases: %v", err)
+		}
+		var file conformanceFile
+		if err := json.Unmarshal(raw, &file); err != nil {
+			f.Fatalf("decoding conformance cases: %v", err)
+		}
+		files = append(files, file)
 	}
-	var file conformanceFile
-	if err := json.Unmarshal(raw, &file); err != nil {
-		f.Fatalf("decoding conformance cases: %v", err)
-	}
-	return file
+	return files
 }
 
 // fuzzFindNumber reports whether a value decoded by StrictJSON holds a number
@@ -88,26 +92,27 @@ func fuzzFindReplacement(v any) bool {
 // ---------------------------------------------------------------------------
 
 func FuzzStrictJSON(f *testing.F) {
-	file := fuzzConformanceFile(f)
-	for _, c := range file.StrictJSONCases {
-		if c.InputGen != nil || c.InputB64 == nil {
-			continue
+	for _, file := range fuzzConformanceFiles(f) {
+		for _, c := range file.StrictJSONCases {
+			if c.InputGen != nil || c.InputB64 == nil {
+				continue
+			}
+			raw, err := rawURL.DecodeString(*c.InputB64)
+			if err != nil {
+				f.Fatalf("strict_json_cases[%s]: decoding input_b64: %v", c.Name, err)
+			}
+			f.Add(raw)
 		}
-		raw, err := rawURL.DecodeString(*c.InputB64)
-		if err != nil {
-			f.Fatalf("strict_json_cases[%s]: decoding input_b64: %v", c.Name, err)
+		for _, c := range file.BundleCases {
+			if c.InputGen != nil || c.InputB64 == nil {
+				continue
+			}
+			raw, err := rawURL.DecodeString(*c.InputB64)
+			if err != nil {
+				f.Fatalf("bundle_cases[%s]: decoding input_b64: %v", c.Name, err)
+			}
+			f.Add(raw)
 		}
-		f.Add(raw)
-	}
-	for _, c := range file.BundleCases {
-		if c.InputGen != nil || c.InputB64 == nil {
-			continue
-		}
-		raw, err := rawURL.DecodeString(*c.InputB64)
-		if err != nil {
-			f.Fatalf("bundle_cases[%s]: decoding input_b64: %v", c.Name, err)
-		}
-		f.Add(raw)
 	}
 
 	f.Fuzz(func(t *testing.T, raw []byte) {
@@ -146,16 +151,17 @@ func FuzzStrictJSON(f *testing.F) {
 // ---------------------------------------------------------------------------
 
 func FuzzVerify(f *testing.F) {
-	file := fuzzConformanceFile(f)
-	for _, c := range file.BundleCases {
-		if c.InputGen != nil || c.InputB64 == nil {
-			continue
+	for _, file := range fuzzConformanceFiles(f) {
+		for _, c := range file.BundleCases {
+			if c.InputGen != nil || c.InputB64 == nil {
+				continue
+			}
+			raw, err := rawURL.DecodeString(*c.InputB64)
+			if err != nil {
+				f.Fatalf("bundle_cases[%s]: decoding input_b64: %v", c.Name, err)
+			}
+			f.Add(raw)
 		}
-		raw, err := rawURL.DecodeString(*c.InputB64)
-		if err != nil {
-			f.Fatalf("bundle_cases[%s]: decoding input_b64: %v", c.Name, err)
-		}
-		f.Add(raw)
 	}
 
 	f.Fuzz(func(t *testing.T, raw []byte) {
@@ -179,6 +185,16 @@ func FuzzVerify(f *testing.F) {
 		if (err1 == nil) != (err2 == nil) {
 			t.Fatalf("Verify disagreed on acceptance across policies for the same input: err1=%v err2=%v", err1, err2)
 		}
+		// An accepted-protocols list only ever narrows acceptance, and the
+		// result names the version the bundle declared.
+		if err1 == nil {
+			for _, protocol := range KnownProtocols() {
+				v3, err3 := Verify(raw, VerifyOptions{AcceptedProtocols: []string{protocol}})
+				if (err3 == nil) != (v1.Protocol == protocol) || (err3 == nil && v3.Protocol != protocol) {
+					t.Fatalf("AcceptedProtocols [%s] gave err=%v for a %s bundle", protocol, err3, v1.Protocol)
+				}
+			}
+		}
 	})
 }
 
@@ -193,16 +209,16 @@ var fuzzSignedPayloadKinds = [5]string{KindStatement, KindDelegation, KindAccept
 // fuzzSignedPayloadSeeds returns one valid canonical payload per kind, in
 // fuzzSignedPayloadKinds order, with the same field values as fixture() and
 // TestPublicationGrant.
-func fuzzSignedPayloadSeeds(f testing.TB) [5][]byte {
+func fuzzSignedPayloadSeeds(f testing.TB, g caseGen) [5][]byte {
 	f.Helper()
 	admin, agent, issuer := fuzzSigner(f, 1), fuzzSigner(f, 2), fuzzSigner(f, 3)
 
-	d := Delegation{Header: NewHeader(KindDelegation, KeyIdentity(admin.KeyID()), admin, fixedNow), AgentID: agentID, AgentKeyID: agent.KeyID(), AgentPublicKey: agent.PublicKey(), ServiceAudience: exampleIssuer, NotBefore: fixedNow.Format(TimestampLayout), ExpiresAt: fixedNow.Add(48 * time.Hour).Format(TimestampLayout), Scopes: []string{"sign_origin_statement"}}
+	d := Delegation{Header: g.header(KindDelegation, KeyIdentity(admin.KeyID()), admin, fixedNow), AgentID: agentID, AgentKeyID: agent.KeyID(), AgentPublicKey: agent.PublicKey(), ServiceAudience: exampleIssuer, NotBefore: fixedNow.Format(TimestampLayout), ExpiresAt: fixedNow.Add(48 * time.Hour).Format(TimestampLayout), Scopes: []string{"sign_origin_statement"}}
 	dPayload, err := Canonical(d)
 	if err != nil {
 		f.Fatalf("delegation payload: %v", err)
 	}
-	dEnv, err := admin.Sign(KindDelegation, d)
+	dEnv, err := admin.SignFor(g.protocol, KindDelegation, d)
 	if err != nil {
 		f.Fatalf("signing delegation: %v", err)
 	}
@@ -211,18 +227,18 @@ func fuzzSignedPayloadSeeds(f testing.TB) [5][]byte {
 		f.Fatalf("delegation digest: %v", err)
 	}
 
-	a := Acceptance{Header: NewHeader(KindAcceptance, KeyIdentity(agent.KeyID()), agent, fixedNow), AgentID: agentID, DelegationSHA256: dh}
+	a := Acceptance{Header: g.header(KindAcceptance, KeyIdentity(agent.KeyID()), agent, fixedNow), AgentID: agentID, DelegationSHA256: dh}
 	aPayload, err := Canonical(a)
 	if err != nil {
 		f.Fatalf("acceptance payload: %v", err)
 	}
 
-	st := Statement{Header: NewHeader(KindStatement, KeyIdentity(agent.KeyID()), agent, fixedNow), AgentID: agentID, DelegationSHA256: dh, ArtifactSHA256: Hash([]byte("hello\n")), ArtifactSize: "6", ArtifactMediaType: "text/plain", Nonce: nonceID}
+	st := Statement{Header: g.header(KindStatement, KeyIdentity(agent.KeyID()), agent, fixedNow), AgentID: agentID, DelegationSHA256: dh, ArtifactSHA256: Hash([]byte("hello\n")), ArtifactSize: "6", ArtifactMediaType: "text/plain", Nonce: nonceID}
 	stPayload, err := Canonical(st)
 	if err != nil {
 		f.Fatalf("statement payload: %v", err)
 	}
-	stEnv, err := agent.Sign(KindStatement, st)
+	stEnv, err := agent.SignFor(g.protocol, KindStatement, st)
 	if err != nil {
 		f.Fatalf("signing statement: %v", err)
 	}
@@ -231,13 +247,13 @@ func fuzzSignedPayloadSeeds(f testing.TB) [5][]byte {
 		f.Fatalf("statement digest: %v", err)
 	}
 
-	g := PublicationGrant{Header: NewHeader(KindGrant, KeyIdentity(admin.KeyID()), admin, fixedNow), StatementSHA256: sh, DelegationSHA256: dh, ServiceAudience: exampleIssuer, Visibility: "private", Purpose: "issue_origin_certificate", ExpiresAt: fixedNow.Add(5 * time.Minute).Format(TimestampLayout), Nonce: nonceID}
-	gPayload, err := Canonical(g)
+	grant := PublicationGrant{Header: g.header(KindGrant, KeyIdentity(admin.KeyID()), admin, fixedNow), StatementSHA256: sh, DelegationSHA256: dh, ServiceAudience: exampleIssuer, Visibility: "private", Purpose: "issue_origin_certificate", ExpiresAt: fixedNow.Add(5 * time.Minute).Format(TimestampLayout), Nonce: nonceID}
+	gPayload, err := Canonical(grant)
 	if err != nil {
 		f.Fatalf("grant payload: %v", err)
 	}
 
-	cert := Certificate{Header: NewHeader(KindCertificate, exampleIssuer, issuer, fixedNow.Add(time.Minute)), CertificateID: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", StatementSHA256: sh, DelegationSHA256: dh, SourceKeyID: agent.KeyID(), ExpiresAt: fixedNow.Add(time.Minute + 24*time.Hour).Format(TimestampLayout), SignatureCheck: "valid", AgentBinding: "admin_key_delegation", OrganizationBinding: "unproven", ContentTruth: "not_established"}
+	cert := Certificate{Header: g.header(KindCertificate, exampleIssuer, issuer, fixedNow.Add(time.Minute)), CertificateID: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", StatementSHA256: sh, DelegationSHA256: dh, SourceKeyID: agent.KeyID(), ExpiresAt: fixedNow.Add(time.Minute + 24*time.Hour).Format(TimestampLayout), SignatureCheck: "valid", AgentBinding: "admin_key_delegation", OrganizationBinding: "unproven", ContentTruth: "not_established"}
 	certPayload, err := Canonical(cert)
 	if err != nil {
 		f.Fatalf("certificate payload: %v", err)
@@ -251,29 +267,34 @@ func FuzzSignedPayload(f *testing.F) {
 	// Each kind is signed by the key its seed payload names (agent, admin,
 	// agent, admin, issuer), so every seed starts on the accept path and
 	// mutations explore that kind's field rules rather than a key mismatch.
+	// The version selector picks the protocol the payload is signed under.
 	admin, agent, issuer := fuzzSigner(f, 1), fuzzSigner(f, 2), fuzzSigner(f, 3)
 	signers := [5]*Signer{agent, admin, agent, admin, issuer}
+	versions := [2]caseGen{gen01, gen02}
 
-	seeds := fuzzSignedPayloadSeeds(f)
-	for i, payload := range seeds {
-		if _, err := VerifyEnvelope(signRaw(f, signers[i], fuzzSignedPayloadKinds[i], payload)); err != nil {
-			f.Fatalf("%s seed is not on the accept path: %v", fuzzSignedPayloadKinds[i], err)
+	for v, g := range versions {
+		seeds := fuzzSignedPayloadSeeds(f, g)
+		for i, payload := range seeds {
+			if _, err := VerifyEnvelope(g.signRaw(f, signers[i], fuzzSignedPayloadKinds[i], payload)); err != nil {
+				f.Fatalf("%s %s seed is not on the accept path: %v", g.version(), fuzzSignedPayloadKinds[i], err)
+			}
+			matching := uint8(i)
+			mismatching := uint8((i + 1) % len(fuzzSignedPayloadKinds))
+			f.Add(uint8(v), matching, payload)
+			f.Add(uint8(v), mismatching, payload)
 		}
-		matching := uint8(i)
-		mismatching := uint8((i + 1) % len(fuzzSignedPayloadKinds))
-		f.Add(matching, payload)
-		f.Add(mismatching, payload)
 	}
 
-	f.Fuzz(func(t *testing.T, kind uint8, payload []byte) {
+	f.Fuzz(func(t *testing.T, version, kind uint8, payload []byte) {
 		if len(payload) == 0 || len(payload) > MaxInputBytes/2 {
 			return
 		}
+		g := versions[int(version)%len(versions)]
 		i := int(kind) % len(fuzzSignedPayloadKinds)
 		k := fuzzSignedPayloadKinds[i]
 		// A real signature over the arbitrary bytes puts the fuzzer past the
 		// signature check and onto payload validation.
-		env := signRaw(t, signers[i], k, payload)
+		env := g.signRaw(t, signers[i], k, payload)
 		v, err := VerifyEnvelope(env)
 		if err != nil {
 			return
@@ -294,6 +315,64 @@ func FuzzSignedPayload(f *testing.F) {
 		}
 		if v.Header.IssuerKeyID != env.Signature.KeyID {
 			t.Fatalf("Header.IssuerKeyID = %q, want %q (env.Signature.KeyID)", v.Header.IssuerKeyID, env.Signature.KeyID)
+		}
+		if v.Header.Protocol != g.protocol {
+			t.Fatalf("Header.Protocol = %q, want %q (the envelope's version)", v.Header.Protocol, g.protocol)
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// FuzzValidIssuer02
+// ---------------------------------------------------------------------------
+
+func FuzzValidIssuer02(f *testing.F) {
+	for _, row := range identifierRows(f) {
+		f.Add(row.value)
+	}
+	for _, file := range fuzzConformanceFiles(f) {
+		for _, c := range file.IssuerCases {
+			f.Add(c.Value)
+		}
+	}
+	f.Fuzz(func(t *testing.T, value string) {
+		if !ValidIssuer02(value) {
+			return
+		}
+		if len(value) == 0 || len(value) > 256 {
+			t.Fatalf("accepted length %d: %q", len(value), value)
+		}
+		for i := 0; i < len(value); i++ {
+			c := value[i]
+			if c <= 0x20 || c >= 0x7f || strings.IndexByte("%?#\\", c) >= 0 {
+				t.Fatalf("accepted forbidden byte %#x in %q", c, value)
+			}
+		}
+		if !strings.HasPrefix(value, "https://") && !strings.HasPrefix(value, "urn:") {
+			t.Fatalf("accepted an unknown scheme: %q", value)
+		}
+		if strings.Contains(value, "@") && strings.HasPrefix(value, "https://") {
+			host := value[len("https://"):]
+			if end := strings.IndexByte(host, '/'); end >= 0 {
+				host = host[:end]
+			}
+			if strings.Contains(host, "@") {
+				t.Fatalf("accepted userinfo: %q", value)
+			}
+		}
+		if strings.HasPrefix(value, "https://") {
+			rest := value[len("https://"):]
+			if end := strings.IndexByte(rest, '/'); end >= 0 {
+				for _, segment := range strings.Split(rest[end+1:], "/") {
+					if segment == "." || segment == ".." {
+						t.Fatalf("accepted a dot segment: %q", value)
+					}
+				}
+			}
+		}
+		// Acceptance is a property of the bytes alone and is stable.
+		if !ValidIssuer02(string([]byte(value))) {
+			t.Fatalf("verdict not stable for %q", value)
 		}
 	})
 }

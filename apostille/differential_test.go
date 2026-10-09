@@ -487,7 +487,7 @@ type diffKindFixture struct {
 // codebase already trusts.
 func diffKindFixtures(t *testing.T) []diffKindFixture {
 	t.Helper()
-	b, admin, agent, _ := fixedBundle(t)
+	b, admin, agent, _ := gen01.fixedBundle(t)
 
 	var st Statement
 	if err := DecodePayload(b.Statement, KindStatement, &st); err != nil {
@@ -512,8 +512,8 @@ func diffKindFixtures(t *testing.T) []diffKindFixture {
 	}
 	grant := PublicationGrant{Header: NewHeader(KindGrant, KeyIdentity(admin.KeyID()), admin, fixedNow), StatementSHA256: sh, DelegationSHA256: dh, ServiceAudience: exampleIssuer, Visibility: "private", Purpose: "issue_origin_certificate", ExpiresAt: fixedNow.Add(5 * time.Minute).Format(TimestampLayout), Nonce: nonceID}
 
-	pOnly, signer4 := producerOnly(t)
-	cert := certFor(t, pOnly, signer4, "urn:example:private-issuer", fixedNow, fixedNow.Add(24*time.Hour), "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")
+	pOnly, signer4 := gen01.producerOnly(t)
+	cert := gen01.certFor(t, pOnly, signer4, "urn:example:private-issuer", fixedNow, fixedNow.Add(24*time.Hour), "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")
 
 	return []diffKindFixture{
 		{KindStatement, diffToMap(t, st), agent, diffStatementMembers()},
@@ -785,7 +785,7 @@ func diffEd25519EdgeCaseItems(t *testing.T) []differentialItem {
 	order2Sig := append(append([]byte{}, diffOrder2Key...), make([]byte, 32)...)
 	corpus.add(diffEd25519EdgeCaseLabels[4], KindStatement, diffOddKeyStatement(t, diffOrder2Key, order2Sig))
 
-	genuineBundle, genuineSigner := producerOnly(t)
+	genuineBundle, genuineSigner := gen01.producerOnly(t)
 	genuineSig, err := rawURL.DecodeString(genuineBundle.Statement.Signature.Value)
 	if err != nil {
 		t.Fatal(err)
