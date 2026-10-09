@@ -1,8 +1,9 @@
 import {
-    MAX_INPUT_BYTES, PROTOCOL, canonical, decodeBytes, envelopeDigest, fingerprint,
-    parseStrict, signLogin, unb64, validIssuer, validateLoginChallenge, verifyBundle, verifyEnvelope, verifyRegistration,
+    ALGORITHM, ALGORITHM_03, KNOWN_PROTOCOLS, LOGIN_PREFIX_03, MAX_INPUT_BYTES, PROTOCOL, PROTOCOL_02, PROTOCOL_03, canonical, decodeBytes, envelopeDigest, fingerprint,
+    parseStrict, signLogin, signLogin03, unb64, validIssuer, validateLoginChallenge, verifyBundle, verifyEnvelope, verifyRegistration,
 } from "./apostille-core.mjs";
 import { DEFAULT_TIMEOUT_MS, MAX_RESPONSE_BYTES } from "./apostille-http.mjs";
+import { profileFor } from "./apostille-profile.mjs";
 import { ERC8004_PROTOCOL, erc8004OwnerMessage, verifyERC8004Binding } from "./apostille-erc8004.mjs";
 
 const encoder = new TextEncoder();
@@ -109,6 +110,8 @@ export class ApostilleClient {
     async status() {
         const data = await this.#request("GET", "/status");
         need(data.protocol === PROTOCOL && data.issuer === this.#issuer, "issuer_mismatch");
+        // protocols is absent from a service that only knows Core 0.1.
+        need(data.protocols === undefined || (Array.isArray(data.protocols) && data.protocols.every((value) => typeof value === "string")), "invalid_response");
         return data;
     }
     async keys() {
@@ -117,11 +120,35 @@ export class ApostilleClient {
         for (const key of data.keys) need(key.algorithm === "Ed25519" && key.key_id === await fingerprint(key.public_key), "invalid_key_directory");
         return data;
     }
+    // The key directory of one protocol version. Like keys() it is an online bootstrap only and never
+    // establishes trust: it must echo the version and the pinned issuer, and every key must have that
+    // version's algorithm, size and key ID.
+    async keysFor(protocol) {
+        need(typeof protocol === "string" && KNOWN_PROTOCOLS.includes(protocol), "unsupported_protocol_version");
+        if (protocol === PROTOCOL) return this.keys();
+        const algorithm = protocol === PROTOCOL_03 ? ALGORITHM_03 : ALGORITHM;
+        const data = await this.#request("GET", `/keys?protocol=${encodeURIComponent(protocol)}`);
+        need(data.protocol === protocol && data.issuer === this.#issuer && Array.isArray(data.keys), "invalid_key_directory");
+        for (const key of data.keys) {
+            let keyID = null;
+            // The version's own key check also applies (strict Ed25519 for Core 0.2).
+            try { keyID = await fingerprint(key?.public_key, protocol); profileFor(protocol).checkKey(unb64(key.public_key)); } catch { keyID = null; }
+            need(key && key.algorithm === algorithm && keyID !== null && key.key_id === keyID, "invalid_key_directory");
+        }
+        return data;
+    }
+    // An Ed25519 public key gets the Core 0.1 login message, an ML-DSA-65 key the Core 0.3 one.
     async createChallenge(publicKey) {
-        const keyID = await fingerprint(publicKey);
+        let keyID, prefix = "iff-apostille/login/0.1\n";
+        try { keyID = await fingerprint(publicKey); }
+        catch { keyID = await fingerprint(publicKey, PROTOCOL_03); prefix = LOGIN_PREFIX_03; }
         const data = await this.#request("POST", "/auth/challenges", { public_key: publicKey });
-        try { validateLoginChallenge(data, keyID, this.#issuer); }
-        catch { throw new ApostilleAPIError(0, "invalid_challenge"); }
+        try {
+            // The field rules (issuer, UUID, expiry window, purpose, no extra lines) are those of
+            // the 0.1 message; only the prefix differs, and it must be the one for the key.
+            need(typeof data.message === "string" && data.message.startsWith(prefix), "invalid_challenge");
+            validateLoginChallenge({ ...data, message: "iff-apostille/login/0.1\n" + data.message.slice(prefix.length) }, keyID, this.#issuer);
+        } catch { throw new ApostilleAPIError(0, "invalid_challenge"); }
         return data;
     }
     async login(signer) {
@@ -129,7 +156,7 @@ export class ApostilleClient {
         const revision = this.#sessionRevision;
         const challenge = await this.createChallenge(signer.publicKey);
         need(revision === this.#sessionRevision, "session_changed");
-        const signature = await signLogin(challenge.message, signer, this.#issuer);
+        const signature = signer.algorithm === ALGORITHM_03 ? await signLogin03(challenge.message, signer) : await signLogin(challenge.message, signer, this.#issuer);
         need(revision === this.#sessionRevision, "session_changed");
         const data = await this.#request("POST", "/auth/verify", { challenge_id: challenge.challenge_id, message: challenge.message, signature });
         need(revision === this.#sessionRevision, "session_changed");
@@ -201,13 +228,15 @@ export class ApostilleClient {
         const body = snapshot({ statement, grant }).value;
         await verifyEnvelope(body.statement, "origin-statement");
         const g = await verifyEnvelope(body.grant, "publication-grant");
+        // A grant names material of its own version only; refuse a mismatch before anything is sent.
+        need(body.grant.protocol === body.statement.protocol, "invalid_publication_grant");
         const digest = await envelopeDigest(body.statement);
         need(g.service_audience === this.#issuer && g.statement_sha256 === digest, "invalid_publication_grant");
         const issued = Date.parse(g.issued_at), expires = Date.parse(g.expires_at), now = Date.now();
         need(issued <= now + 120000 && expires > now && expires - issued <= 15 * 60000, "invalid_publication_grant");
         const data = await this.#request("POST", "/submissions", body, true);
         const { verification: checked } = await this.#checkedBundle(data.bundle);
-        need(checked.issuer === this.#issuer && checked.certificate_scope === "origin_signature_checked" && await envelopeDigest(data.bundle.statement) === digest && (g.visibility !== "private" || data.is_public === false), "invalid_certificate_response");
+        need(checked.issuer === this.#issuer && checked.certificate_scope === "origin_signature_checked" && await envelopeDigest(data.bundle.statement) === digest && data.bundle.protocol === body.statement.protocol && data.bundle.statement.protocol === body.statement.protocol && (g.visibility !== "private" || data.is_public === false), "invalid_certificate_response");
         return data;
     }
     async #checkedBundle(bundle) {

@@ -190,17 +190,64 @@ func (c *Client) Keys(ctx context.Context) (out KeyDirectory, err error) {
 	}
 	return
 }
-func (c *Client) CreateChallenge(ctx context.Context, publicKey string) (out Challenge, err error) {
-	pub, err := core.ParsePublicKey(publicKey)
+
+// profileAlgorithm is the signature.algorithm value of a known protocol.
+func profileAlgorithm(protocol string) (string, bool) {
+	switch protocol {
+	case core.Protocol, core.Protocol02:
+		return core.Algorithm, true
+	case core.Protocol03:
+		return core.Algorithm03, true
+	}
+	return "", false
+}
+
+// KeysFor fetches the key directory of one protocol version from
+// /keys?protocol=<identifier>. Like Keys it is an online bootstrap only: the
+// directory must echo the requested protocol and the pinned issuer, and every key
+// must have that version's algorithm, size and key ID. It never establishes trust.
+func (c *Client) KeysFor(ctx context.Context, protocol string) (out KeyDirectory, err error) {
+	algorithm, known := profileAlgorithm(protocol)
+	if !known {
+		return out, sdkError("unsupported_protocol_version")
+	}
+	if protocol == core.Protocol {
+		return c.Keys(ctx)
+	}
+	_, err = c.request(ctx, "GET", "/keys?protocol="+url.QueryEscape(protocol), nil, false, &out)
 	if err != nil {
-		return out, err
+		return
+	}
+	if out.Protocol != protocol || out.Issuer != c.issuer || out.Keys == nil {
+		return out, sdkError("invalid_key_directory")
+	}
+	for _, key := range out.Keys {
+		pub, e := core.ParsePublicKeyFor(protocol, key.PublicKey)
+		if e != nil || key.Algorithm != algorithm || core.Fingerprint(pub) != key.KeyID {
+			return out, sdkError("invalid_key_directory")
+		}
+	}
+	return
+}
+
+// CreateChallenge accepts an Ed25519 public key (Core 0.1 login message) or an
+// ML-DSA-65 public key (Core 0.3 login message) and requires the exact message
+// of the matching version.
+func (c *Client) CreateChallenge(ctx context.Context, publicKey string) (out Challenge, err error) {
+	prefix := "iff-apostille/login/0.1"
+	pub, err := core.ParsePublicKeyFor(core.Protocol, publicKey)
+	if err != nil {
+		prefix = "iff-apostille/login/0.3"
+		if pub, err = core.ParsePublicKeyFor(core.Protocol03, publicKey); err != nil {
+			return out, err
+		}
 	}
 	_, err = c.request(ctx, "POST", "/auth/challenges", map[string]string{"public_key": publicKey}, false, &out)
 	if err != nil {
 		return
 	}
 	now := time.Now()
-	expected := fmt.Sprintf("iff-apostille/login/0.1\nissuer:%s\nkey_id:%s\nchallenge:%s\nexpires_at:%s\npurpose:register_or_login", c.issuer, core.Fingerprint(pub), out.ChallengeID, out.ExpiresAt.UTC().Format(core.TimestampLayout))
+	expected := fmt.Sprintf("%s\nissuer:%s\nkey_id:%s\nchallenge:%s\nexpires_at:%s\npurpose:register_or_login", prefix, c.issuer, core.Fingerprint(pub), out.ChallengeID, out.ExpiresAt.UTC().Format(core.TimestampLayout))
 	if out.Issuer != c.issuer || !core.ValidID(out.ChallengeID) || !out.ExpiresAt.After(now) || out.ExpiresAt.After(now.Add(7*time.Minute)) || out.Message != expected {
 		err = sdkError("invalid_challenge")
 	}
@@ -222,7 +269,11 @@ func (c *Client) Login(ctx context.Context, signer *core.Signer) (out LoginResul
 	if _, current := c.session(); current != revision {
 		return out, sdkError("session_changed")
 	}
-	sig, err := signer.SignChallenge(challenge.Message)
+	sign := signer.SignChallenge
+	if signer.Algorithm() == core.Algorithm03 {
+		sign = signer.SignChallenge03
+	}
+	sig, err := sign(challenge.Message)
 	if err != nil {
 		return out, err
 	}
@@ -298,6 +349,11 @@ func (c *Client) Submit(ctx context.Context, statement, grant core.Envelope) (ou
 	if err = core.DecodePayload(grant, core.KindGrant, &g); err != nil {
 		return
 	}
+	// A grant names material of its own version only; refuse a mismatch before
+	// anything is sent.
+	if grant.Protocol != statement.Protocol {
+		return out, sdkError("invalid_publication_grant")
+	}
 	digest, err := core.EnvelopeDigest(statement)
 	if err != nil {
 		return out, err
@@ -322,7 +378,7 @@ func (c *Client) Submit(ctx context.Context, statement, grant core.Envelope) (ou
 	out.Bundle = checked.Bundle
 	verified := checked.Verification
 	actual, _ := core.EnvelopeDigest(out.Bundle.Statement)
-	if err != nil || verified.Issuer != c.issuer || verified.CertificateScope != "origin_signature_checked" || actual != digest || (g.Visibility == "private" && out.IsPublic) {
+	if err != nil || verified.Issuer != c.issuer || verified.CertificateScope != "origin_signature_checked" || actual != digest || out.Bundle.Protocol != statement.Protocol || out.Bundle.Statement.Protocol != statement.Protocol || (g.Visibility == "private" && out.IsPublic) {
 		return out, sdkError("invalid_certificate_response")
 	}
 	return out, nil

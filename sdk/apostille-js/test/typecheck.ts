@@ -98,6 +98,11 @@ async function hostedSurface(): Promise<void> {
   const me: MeResult = await client.me();
   const maxAgents: number = (await client.status()).limits.max_agents;
   void maxAgents;
+  const protocols: string[] | undefined = (await client.status()).protocols;
+  const directory03 = await client.keysFor(PROTOCOL_03);
+  await client.login(mlSigner);
+  void protocols;
+  void directory03;
   const certificate: CertificateRecord = await client.submit(statement, grant);
   await client.registerAgent("agent", registration);
   const identity: ERC8004Identity = { chain_id: "8453", registry_address: "0x1111111111111111111111111111111111111111", erc8004_agent_id: "42", owner_address: "0x2222222222222222222222222222222222222222" };

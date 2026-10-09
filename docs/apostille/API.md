@@ -7,15 +7,55 @@ No multipart upload or private-key parameter is accepted. JSON API responses
 may contain numeric operational metadata such as `expires_in`; signed artifacts
 follow the numeric-free Core profile.
 
-The hosted service accepts Core 0.1 only. Hosted Core 0.2 and 0.3 are pending the
-hosted-service phase; until then clients must not send 0.2 or 0.3 artifacts, and
-the browser console disables hosted actions for ML-DSA-65 keys. Planned for 0.3:
-a login challenge message that starts with `iff-apostille/login/0.3` followed by
-LF (not the 0.1 prefix), at most 4096 bytes, signed with pure hedged ML-DSA-65
-and the empty context, with public-key and signature fields sized for ML-DSA-65
-(2603 and 4412 unpadded base64url characters). This describes planned behavior,
-not a route the service offers today; the exact message fields will be documented
-when it is enabled.
+## Core versions (Core 0.3: deployment pending)
+
+The deployed hosted service accepts Core 0.1 only. Hosted Core 0.3 (ML-DSA-65) is
+specified below and implemented by the Go and JavaScript clients, but the server
+is not yet deployed, so treat it as deployment pending. A client release that
+supports this contract does not mean the hosted service accepts Core 0.3; check
+`GET /status` `protocols`. The hosted browser console keeps hosted actions
+disabled for ML-DSA-65 keys until the server is deployed. Core 0.2 is never issued
+by the hosted service. Every existing response keeps its current fields and
+meaning, so released 0.1 clients keep working; the 0.3 behavior is additive.
+
+- `GET /status` keeps its fields (`protocol` stays the Core 0.1 identifier) and
+  adds `protocols`, the full identifiers the service accepts (`[0.1, 0.3]` when
+  0.3 is enabled, `[0.1]` otherwise), and the feature `ml_dsa_65_keys` when 0.3 is
+  enabled. A service that predates this omits `protocols`.
+- `GET /keys` without a query is unchanged: the Core 0.1 directory, Ed25519 keys
+  only. `GET /keys?protocol=<URL-encoded full identifier>` returns that version's
+  directory, `{protocol, issuer, keys: [{key_id, public_key, algorithm}], trust}`.
+  For 0.3 the keys have `algorithm: "ML-DSA-65"`, a 2603-character public key and
+  a `sha256:` key ID over the raw key. An unknown or unsupported version,
+  including 0.2, is HTTP 400 `unsupported_protocol_version`.
+- `POST /auth/challenges {public_key}`: a 43-character Ed25519 key gets the 0.1
+  message; a 2603-character ML-DSA-65 key gets the same message with the 0.3
+  prefix: `iff-apostille/login/0.3`, LF, `issuer:%s`, LF, `key_id:%s`, LF,
+  `challenge:%s`, LF, `expires_at:%s`, LF, `purpose:register_or_login`. When 0.3 is
+  disabled an ML-DSA-65 key gets HTTP 400 `unsupported_key_algorithm`.
+- `POST /auth/verify`: an ML-DSA-65 challenge is answered with a 4412-character
+  login signature (pure hedged ML-DSA-65, empty context, over the exact message;
+  the core's `SignChallenge03` / `signLogin03`). The workspace is found or created
+  by the administrator key ID as today, so an ML-DSA-65 administrator key has its
+  own workspace. An existing Ed25519 workspace is **not** migrated: its agents,
+  certificates and public profile stay with the Ed25519 key, and signing in with a
+  new ML-DSA-65 key starts an empty workspace. A client never falls back to a
+  Core 0.1 login for an ML-DSA-65 key.
+- Registration and submission: a workspace whose administrator key is Ed25519
+  registers and certifies Core 0.1 only; one whose administrator key is ML-DSA-65
+  registers and certifies Core 0.3 only; Core 0.2 is refused
+  (`unsupported_protocol_version`). A 0.3 submission is certified with the hosted
+  ML-DSA-65 issuer key; if 0.3 issuance is unavailable the service answers 503
+  `core_0_3_unavailable`. Response shapes are unchanged.
+
+Clients check versions on both sides of a submission: the grant's protocol must
+equal the statement's before anything is sent, and the returned bundle's protocol
+must equal the submitted statement's, and an issuer pin
+(`TrustedKeyIDs` / `trustedKeyIDs`) must list the hosted ML-DSA-65 issuer key ID
+for the certificate to be `accepted_by_policy`. The key directory never
+establishes trust. Downloading a certificate is not tied to the version of the key
+used to sign in: pin both hosted issuer keys to verify historical Core 0.1
+certificates and new Core 0.3 ones with one client.
 
 The experimental `zk-budget/0.1` profile runs through the local Go SDK/CLI;
 there is no hosted ZK proving or verification endpoint. Existing submission
@@ -25,9 +65,9 @@ certificate alone is not a valid budget proof. See the [ZK guide](ZK.md).
 
 | Method/path | Input / result |
 | --- | --- |
-| GET `/status` | Protocol, configured issuer, enabled flag, authoritative `limits.max_agents` and `limits.max_daily_certificates`, implemented/planned capabilities |
-| GET `/keys` | Current issuer public key/fingerprint; online bootstrap only |
-| POST `/auth/challenges` | `{public_key}` → 201 `{challenge_id,message,expires_at,issuer}`; 10/client IP/minute by default and latest 5 unconsumed per public key retained |
+| GET `/status` | Protocol, supported `protocols`, configured issuer, enabled flag, authoritative `limits.max_agents` and `limits.max_daily_certificates`, implemented/planned capabilities |
+| GET `/keys`, GET `/keys?protocol=` | Current issuer public key/fingerprint (Core 0.1), or the directory of one protocol version; online bootstrap only |
+| POST `/auth/challenges` | `{public_key}` (Ed25519 or ML-DSA-65) → 201 `{challenge_id,message,expires_at,issuer}`; 10/client IP/minute by default and latest 5 unconsumed per public key retained |
 | POST `/auth/verify` | `{challenge_id,message,signature}` → `{access_token,token_type,expires_in,workspace}` |
 | GET `/me` | Own workspace, registered agents and recent certificates; the current workspace limits are returned by `/status` |
 | PUT `/workspace` | `{name,is_public}` → own updated profile |
@@ -45,7 +85,7 @@ certificate alone is not a valid budget proof. See the [ZK guide](ZK.md).
 GET routes also support HEAD. Protected routes (from `/me` through certificate
 hiding) use `Authorization: Bearer <access_token>`; the scheme is
 case-insensitive and standard HTTP whitespace is accepted. Tokens last 15 minutes and
-cannot authorize legacy endpoint-owner routes. The challenge signature is raw
+cannot authorize legacy endpoint-owner routes. The Core 0.1 challenge signature is raw
 Ed25519 over the returned exact UTF-8 message, then unpadded base64url; it uses a
 separate login purpose/domain, never the artifact signing preimage. Check expected
 issuer/key before signing. The console and JS SDK reconstruct the entire message

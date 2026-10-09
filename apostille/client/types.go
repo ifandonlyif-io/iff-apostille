@@ -67,12 +67,15 @@ type WorkspaceState struct {
 	Certificates []Certificate `json:"certificates"`
 }
 type Status struct {
-	Protocol string   `json:"protocol"`
-	Issuer   string   `json:"issuer"`
-	Enabled  bool     `json:"enabled"`
-	Features []string `json:"features"`
-	Planned  []string `json:"planned"`
-	Limits   Limits   `json:"limits"`
+	Protocol string `json:"protocol"`
+	// Protocols lists the full identifiers the hosted service accepts; absent
+	// from a service that only knows Core 0.1.
+	Protocols []string `json:"protocols"`
+	Issuer    string   `json:"issuer"`
+	Enabled   bool     `json:"enabled"`
+	Features  []string `json:"features"`
+	Planned   []string `json:"planned"`
+	Limits    Limits   `json:"limits"`
 }
 type Limits struct {
 	MaxAgents            int `json:"max_agents"`

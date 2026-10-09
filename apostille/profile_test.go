@@ -256,3 +256,44 @@ func TestThirdProfileSlotsIn(t *testing.T) {
 	_, err = VerifyBundle(b, VerifyOptions{AcceptedProtocols: []string{Protocol, Protocol02}})
 	require.ErrorContains(t, err, "not accepted")
 }
+
+func TestParsePublicKeyFor(t *testing.T) {
+	seed, edKey, err := GenerateKey()
+	require.NoError(t, err)
+	_, err = NewSigner(seed)
+	require.NoError(t, err)
+	_, mlKey, err := GenerateMLDSAKey()
+	require.NoError(t, err)
+
+	for _, protocol := range []string{Protocol, Protocol02} {
+		raw, err := ParsePublicKeyFor(protocol, edKey)
+		require.NoError(t, err, protocol)
+		require.Len(t, raw, 32)
+		_, err = ParsePublicKeyFor(protocol, mlKey)
+		require.Error(t, err, protocol)
+		_, err = ParsePublicKeyFor(protocol, edKey+"A")
+		require.Error(t, err, protocol)
+		_, err = ParsePublicKeyFor(protocol, edKey[:42])
+		require.Error(t, err, protocol)
+	}
+	raw, err := ParsePublicKeyFor(Protocol03, mlKey)
+	require.NoError(t, err)
+	require.Len(t, raw, 1952)
+	_, err = ParsePublicKeyFor(Protocol03, edKey)
+	require.Error(t, err)
+	_, err = ParsePublicKeyFor(Protocol03, mlKey[:len(mlKey)-1])
+	require.Error(t, err)
+	_, err = ParsePublicKeyFor(Protocol03, mlKey+"A")
+	require.Error(t, err)
+	// Flipping a padding bit of the last character decodes to the same bytes
+	// but is not canonical.
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+	last := strings.IndexByte(alphabet, edKey[42])
+	require.GreaterOrEqual(t, last, 0)
+	_, err = ParsePublicKeyFor(Protocol, edKey[:42]+string(alphabet[last^1]))
+	require.Error(t, err)
+	_, err = ParsePublicKeyFor("https://ifandonlyif.io/apostille/spec/0.4", edKey)
+	require.Error(t, err)
+	_, err = ParsePublicKeyFor(Protocol, "")
+	require.Error(t, err)
+}

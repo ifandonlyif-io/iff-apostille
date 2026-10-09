@@ -1,4 +1,4 @@
-import type { AgentRegistration, Bundle, Ed25519Signer, Envelope, ERC8004BindingDocument, ERC8004Envelope, ERC8004Verification, Verification } from "./index.d.ts";
+import type { AgentRegistration, Bundle, CoreProtocol, Ed25519Signer, Envelope, MLDSA65Signer, ERC8004BindingDocument, ERC8004Envelope, ERC8004Verification, Verification } from "./index.d.ts";
 
 export interface ApostilleClientOptions {
   baseURL: string;
@@ -12,6 +12,8 @@ export interface ApostilleClientOptions {
 
 export interface ApostilleStatus {
   protocol: "https://ifandonlyif.io/apostille/spec/0.1";
+  /** Full identifiers the hosted service accepts; absent from a Core 0.1-only service. */
+  protocols?: string[];
   issuer: string;
   enabled: boolean;
   features: string[];
@@ -22,11 +24,11 @@ export interface ApostilleStatus {
 export interface ApostilleIssuerKey {
   key_id: string;
   public_key: string;
-  algorithm: "Ed25519";
+  algorithm: "Ed25519" | "ML-DSA-65";
 }
 
 export interface ApostilleKeyDirectory {
-  protocol: "https://ifandonlyif.io/apostille/spec/0.1";
+  protocol: CoreProtocol;
   issuer: string;
   keys: ApostilleIssuerKey[];
   trust: string;
@@ -140,8 +142,11 @@ export declare class ApostilleClient {
   constructor(options: ApostilleClientOptions);
   status(): Promise<ApostilleStatus>;
   keys(): Promise<ApostilleKeyDirectory>;
+  /** The key directory of one protocol version; Core 0.1 is the same as keys(). */
+  keysFor(protocol: CoreProtocol): Promise<ApostilleKeyDirectory>;
+  /** An Ed25519 key gets the Core 0.1 login message, an ML-DSA-65 key the Core 0.3 one. */
   createChallenge(publicKey: string): Promise<LoginChallenge>;
-  login(signer: Ed25519Signer): Promise<LoginResult>;
+  login(signer: Ed25519Signer | MLDSA65Signer): Promise<LoginResult>;
   clearSession(): void;
   setAccessToken(token: string): void;
   me(): Promise<MeResult>;

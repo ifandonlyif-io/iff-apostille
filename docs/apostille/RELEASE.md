@@ -1,5 +1,13 @@
 # Source alpha release preparation
 
+`v0.3.1-alpha.1` is a root-module-only release on top of `v0.3.0-alpha.1`. It
+adds hosted-API client support for Core 0.3 (`KeysFor`/`keysFor`, ML-DSA-65
+login and a version check on submission responses) and `ParsePublicKeyFor`, to
+the contract in [API.md](API.md) "Core versions". No Core rule, vector or
+vendored file changes. `apostille/zkbudget` and `cmd/apostille` stay at
+`v0.3.0-alpha.1`, because neither uses the client. Hosted Core 0.3 needs the
+matching server deployment.
+
 `v0.3.0-alpha.1` is the second alpha release: root Go module `v0.3.0-alpha.1`
 (packages `apostille`, `apostille/client`, `util`), `apostille/zkbudget/v0.3.0-alpha.1`
 and `cmd/apostille/v0.3.0-alpha.1`, tagged in that order. The root tag was cut
