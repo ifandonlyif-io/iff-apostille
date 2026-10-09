@@ -1,12 +1,12 @@
-# Apostille 0.1 local CLI
+# Apostille local CLI
 
-The `apostille` command creates and verifies issuer-neutral Apostille 0.1 artifacts using local files. It does not contact IFF, upload the original artifact, or make any network request.
-The released CLI handles Core 0.1 only; `--protocol 0.2`, `--protocol 0.3` and ML-DSA-65 key generation arrive with the next CLI release.
+The `apostille` command creates and verifies issuer-neutral Apostille artifacts (Core 0.1, 0.2 and 0.3) using local files. It does not contact IFF, upload the original artifact, or make any network request.
+Core 0.1 is the default; `--protocol 0.2` and `--protocol 0.3` select the later versions (see [Core versions](#core-versions)). Building the CLI needs Go 1.27 or later.
 
 Install the released module, or build it from the repository root:
 
 ```bash
-go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.1.0-alpha.1
+go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.3.0-alpha.1
 # or, from a checkout:
 make apostille-build   # writes bin/apostille
 ```
@@ -58,9 +58,41 @@ mkdir -m 0700 .apostille-private
 ./bin/apostille keygen --out .apostille-private/issuer-key.json --role local-issuer
 ```
 
+Add `--algorithm ml-dsa-65` to generate a post-quantum key for Core 0.3; the default is `--algorithm ed25519`, which signs Core 0.1 and 0.2:
+
+```bash
+./bin/apostille keygen --out .apostille-private/admin-key-pq.json --role administrator --algorithm ml-dsa-65
+```
+
 The repository excludes `.apostille-private/` from Git and Docker build contexts. Each private key file contains `protocol`, `key_id`, `public_key`, and `seed`, plus the optional local `role` label. The command creates it with mode `0600`, refuses to overwrite an existing path, and never writes the seed to stdout. On Unix, every command rejects a private key file readable by the group or other users. Keep production keys in a suitable secret store outside the repository.
 
+The `protocol` member of a key file selects its algorithm: the Core 0.1 identifier means an Ed25519 key (it signs Core 0.1 and 0.2) and the Core 0.3 identifier means an ML-DSA-65 key (it signs Core 0.3 only). A Core 0.2 identifier is not a valid key file protocol. `seed` must be 43 canonical unpadded base64url characters, and the stored `public_key` and `key_id` must equal those derived from the seed under the file's algorithm. A key file holding a 64-byte expanded Ed25519 key or a standard-alphabet seed is refused. ML-DSA-65 here uses the Go standard library `crypto/mldsa`; no third-party ML-DSA code is involved.
+
 The role label is informational. Cryptographic roles are established by the signed artifact kind and its key references.
+
+## Core versions
+
+`delegate`, `sign` and `grant` take `--protocol 0.1|0.2|0.3` (or the full protocol identifier); the default is `0.1`. `issue` follows the version of the statement it certifies; its optional `--protocol` must name that same version.
+
+- Core 0.1 and 0.2 need Ed25519 key files; Core 0.3 needs ML-DSA-65 key files. A key of the wrong algorithm is refused before anything is signed, and no output file is written.
+- Versions never mix: `sign` and `grant` refuse a registration or statement of another version than `--protocol`.
+
+A complete Core 0.3 flow:
+
+```bash
+./bin/apostille keygen --out .apostille-private/admin-key.json --role administrator --algorithm ml-dsa-65
+./bin/apostille keygen --out .apostille-private/agent-key.json --role agent --algorithm ml-dsa-65
+./bin/apostille keygen --out .apostille-private/issuer-key.json --role local-issuer --algorithm ml-dsa-65
+./bin/apostille delegate --protocol 0.3 --admin-key .apostille-private/admin-key.json \
+  --agent-key .apostille-private/agent-key.json --audience https://issuer.example/apostille --out registration.json
+./bin/apostille sign --protocol 0.3 --key .apostille-private/agent-key.json \
+  --file report.json --registration registration.json --out statement.json
+./bin/apostille issue --key .apostille-private/issuer-key.json --issuer https://issuer.example/apostille \
+  --statement statement.json --registration registration.json --out bundle.json
+./bin/apostille verify --offline --bundle bundle.json --artifact report.json --accept-protocol 0.3
+```
+
+The commands below show the default Core 0.1 form; add `--protocol` and the matching key files for the later versions.
 
 ## Register an agent
 
@@ -157,6 +189,8 @@ Pin both the expected issuer and issuer key when trust is required:
   --artifact report.json
 ```
 
+`--accept-protocol` (repeatable; `0.1`, `0.2`, `0.3` or a full identifier) restricts which Core versions the receiver accepts, for example `--accept-protocol 0.3` to refuse Core 0.1 and 0.2 bundles. Without it every known version is accepted. The JSON result carries the bundle's `protocol`.
+
 `--offline` is mandatory. Verification reads only the named local bundle and optional artifact. `--at` accepts an RFC3339 evaluation time; its default is the caller's current time, converted to UTC whole seconds.
 
 After successful bundle parsing and verification, the JSON result has explicit
@@ -177,7 +211,7 @@ Exit codes are:
 
 The detached `erc8004-binding` profile 0.1 is verified from a local document;
 this command never contacts an RPC, key directory, or hosted service. It does not
-alter Core 0.1 bundle verification.
+alter Core 0.1 bundle verification. The profile, like the ZK budget profile, covers Core 0.1 only: `verify-erc8004` and the `zk-*` commands refuse a Core 0.2 or 0.3 registration, bundle or ML-DSA-65 key with a "profile covers Core 0.1 only" error.
 
 ```bash
 ./bin/apostille verify-erc8004 \

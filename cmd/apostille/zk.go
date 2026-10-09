@@ -129,10 +129,16 @@ func (a application) zkSnapshot(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("signer key: %w", err)
 	}
+	if signer.Algorithm() != core.Algorithm {
+		return fmt.Errorf("signer key is %s: the ZK budget profile %w", signer.Algorithm(), errCore01Only)
+	}
 	var registration *core.AgentRegistration
 	if *registrationPath != "" {
 		value, err := readRegistration(*registrationPath)
 		if err != nil {
+			return err
+		}
+		if err := requireCore01("ZK budget profile", "registration", value.Delegation.Protocol); err != nil {
 			return err
 		}
 		delegation, err := core.VerifyRegistration(value, "", a.utcNow())
@@ -250,6 +256,9 @@ func (a application) zkProve(ctx context.Context, args []string) error {
 	if err := readStrictJSON(*sourcePath, core.MaxInputBytes, &source); err != nil {
 		return errors.New("source bundle is invalid")
 	}
+	if err := requireBundleCore01("ZK budget profile", "source bundle", source); err != nil {
+		return err
+	}
 	var request zkbudget.Request
 	if err := readStrictJSON(*requestPath, core.MaxInputBytes, &request); err != nil {
 		return errors.New("request is invalid")
@@ -318,6 +327,12 @@ func (a application) zkVerify(ctx context.Context, args []string) error {
 	proof, err := readBoundedRegular(*proofPath, core.MaxInputBytes)
 	if err != nil {
 		return errors.New("proof is unavailable or invalid")
+	}
+	var document zkbudget.Document
+	if core.StrictJSON(proof, &document) == nil {
+		if err := requireBundleCore01("ZK budget profile", "proof source bundle", document.SourceBundle); err != nil {
+			return err
+		}
 	}
 	verifier, err := zkbudget.NewVerifier(verifyingKey, *vkHash)
 	if err != nil {

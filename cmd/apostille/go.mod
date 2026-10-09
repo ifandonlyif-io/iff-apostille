@@ -1,16 +1,17 @@
 module github.com/ifandonlyif-io/iff-apostille/cmd/apostille
 
-go 1.26.0
+go 1.27.0
 
 toolchain go1.27.2
 
 require (
-	github.com/ifandonlyif-io/iff-apostille v0.1.0-alpha.1
-	github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget v0.1.0-alpha.1
+	github.com/ifandonlyif-io/iff-apostille v0.3.0-alpha.1
+	github.com/ifandonlyif-io/iff-apostille/apostille/zkbudget v0.3.0-alpha.1
 	github.com/stretchr/testify v1.11.1
 )
 
 require (
+	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/bits-and-blooms/bitset v1.24.6 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/consensys/gnark v0.16.3 // indirect

@@ -50,7 +50,7 @@ func TestKeygenPermissionsAndNoClobber(t *testing.T) {
 	}
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
-	var stored keyFile
+	var stored core.KeyFile
 	require.NoError(t, core.StrictJSON(raw, &stored))
 	require.NotEmpty(t, stored.Seed)
 	require.Equal(t, "issuer", stored.Role)
@@ -320,7 +320,7 @@ func TestWrongAgentKeyAndTamperedKeyMetadataAreRejected(t *testing.T) {
 
 	raw, err := os.ReadFile(agentPath)
 	require.NoError(t, err)
-	var stored keyFile
+	var stored core.KeyFile
 	require.NoError(t, json.Unmarshal(raw, &stored))
 	stored.PublicKey = strings.Repeat("A", len(stored.PublicKey))
 	tamperedPath := filepath.Join(dir, "tampered.json")
