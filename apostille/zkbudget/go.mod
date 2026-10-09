@@ -7,7 +7,7 @@ toolchain go1.27.2
 require (
 	github.com/consensys/gnark v0.16.3
 	github.com/consensys/gnark-crypto v0.21.0
-	github.com/ifandonlyif-io/iff-apostille v0.3.0-alpha.1
+	github.com/ifandonlyif-io/iff-apostille v0.4.0-alpha.1
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.11.1
 )
