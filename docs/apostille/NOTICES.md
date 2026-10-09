@@ -25,6 +25,15 @@ point decoding and arithmetic. Preserve its [copyright and license
 notice](notices/edwards25519-LICENSE) when redistributing it. The CLI and the
 ZK module import the root module and so carry the same dependency.
 
+Core 0.3 uses the Go standard library `crypto/mldsa` (Go 1.27, BSD-3-Clause, part
+of the Go distribution) and has no third-party Go ML-DSA library. The test data
+file `testdata/apostille/core-0.3-wycheproof.json` is a subset of the C2SP
+Wycheproof ML-DSA-65 verify vectors (Apache-2.0, `github.com/c2sp/wycheproof`
+commit `ee7b4f7e611928cbe163dc6f5e54527bfd166f34`, file
+`testvectors_v1/mldsa_65_verify_test.json`; see the
+[complete Apache-2.0 terms](notices/APACHE-2.0.txt)). It is test data, not part
+of any runtime or package.
+
 The CLI also imports the experimental ZK module: it is **not** limited to
 standard library/Core/JCS. Its runtime dependency graph includes gnark
 `v0.16.3`, gnark-crypto `v0.21.0` (Apache-2.0), zerolog `v1.35.1` (MIT) and

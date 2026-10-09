@@ -9,44 +9,59 @@ import (
 )
 
 func TestKnownProtocolsAndProfileSizes(t *testing.T) {
-	require.Equal(t, []string{Protocol, Protocol02}, KnownProtocols())
+	require.Equal(t, []string{Protocol, Protocol02, Protocol03}, KnownProtocols())
 	require.Equal(t, "https://ifandonlyif.io/apostille/spec/0.2", Protocol02)
+	require.Equal(t, "https://ifandonlyif.io/apostille/spec/0.3", Protocol03)
 	for _, p := range profiles {
-		require.Equal(t, 43, p.encodedPublicKeyLen())
-		require.Equal(t, 86, p.encodedSignatureLen())
+		wantKey, wantSig := 43, 86
+		if p == profile03 {
+			wantKey, wantSig = 2603, 4412
+		}
+		require.Equal(t, wantKey, p.encodedPublicKeyLen())
+		require.Equal(t, wantSig, p.encodedSignatureLen())
 		got, err := profileFor(p.protocol)
 		require.NoError(t, err)
 		require.Same(t, p, got)
 	}
-	for _, unknown := range []string{"", "https://ifandonlyif.io/apostille/spec/0.3", strings.ToUpper(Protocol02)} {
+	for _, unknown := range []string{"", "https://ifandonlyif.io/apostille/spec/0.4", strings.ToUpper(Protocol02), strings.ToUpper(Protocol03)} {
 		_, err := profileFor(unknown)
 		require.Error(t, err, unknown)
 	}
 	require.Equal(t, "iff-apostille/origin-statement/0.1\n", string(profile01.signingInput(KindStatement, nil)[:35]))
 	require.Equal(t, "iff-apostille/origin-statement/0.2\n", string(profile02.signingInput(KindStatement, nil)[:35]))
+	require.Equal(t, "iff-apostille/origin-statement/0.3\n", string(profile03.signingInput(KindStatement, nil)[:35]))
 	require.NotEqual(t, profile01.signingInput(KindStatement, []byte("x")), profile02.signingInput(KindStatement, []byte("x")))
+	require.NotEqual(t, profile02.signingInput(KindStatement, []byte("x")), profile03.signingInput(KindStatement, []byte("x")))
 }
 
 // TestEnvelopeSizeGateFollowsProfile keeps the Core 0.1 limits (64 and 128
-// bytes) now that they derive from the profile's decoded sizes.
+// bytes) now that they derive from the profile's decoded sizes; every other
+// profile's limits are twice its decoded sizes.
 func TestEnvelopeSizeGateFollowsProfile(t *testing.T) {
 	for _, protocol := range KnownProtocols() {
+		prof, err := profileFor(protocol)
+		require.NoError(t, err)
+		keyLimit, sigLimit := 2*prof.publicKeySize, 2*prof.signatureSize
+		if protocol != Protocol03 {
+			require.Equal(t, 64, keyLimit)
+			require.Equal(t, 128, sigLimit)
+		}
 		b, _, _, _ := fixtureFor(t, protocol)
 		env := b.Statement
 
 		long := env
-		long.Signature.PublicKey = strings.Repeat("A", 65)
-		_, err := VerifyEnvelope(long)
-		require.ErrorContains(t, err, "exceed size limit")
-		long.Signature.PublicKey = strings.Repeat("A", 64)
+		long.Signature.PublicKey = strings.Repeat("A", keyLimit+1)
 		_, err = VerifyEnvelope(long)
-		require.ErrorContains(t, err, "key fingerprint mismatch", "up to 64 bytes reach the decoder")
+		require.ErrorContains(t, err, "exceed size limit")
+		long.Signature.PublicKey = strings.Repeat("A", keyLimit)
+		_, err = VerifyEnvelope(long)
+		require.ErrorContains(t, err, "key fingerprint mismatch", "up to the limit reaches the decoder")
 
 		long = env
-		long.Signature.Value = strings.Repeat("A", 129)
+		long.Signature.Value = strings.Repeat("A", sigLimit+1)
 		_, err = VerifyEnvelope(long)
 		require.ErrorContains(t, err, "exceed size limit")
-		long.Signature.Value = strings.Repeat("A", 128)
+		long.Signature.Value = strings.Repeat("A", sigLimit)
 		_, err = VerifyEnvelope(long)
 		require.ErrorContains(t, err, "invalid source signature")
 	}
@@ -70,7 +85,7 @@ func TestExplicitVersionSigning(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, Protocol02, d.Protocol)
 
-	_, err = CreateRegistrationFor("https://ifandonlyif.io/apostille/spec/0.3", admin, agent, exampleIssuer, time.Hour, now)
+	_, err = CreateRegistrationFor("https://ifandonlyif.io/apostille/spec/0.4", admin, agent, exampleIssuer, time.Hour, now)
 	require.Error(t, err)
 	_, err = admin.SignFor("", KindDelegation, Delegation{})
 	require.Error(t, err)
@@ -134,7 +149,7 @@ func TestIssuanceFollowsSourceVersion(t *testing.T) {
 		{Protocol: Protocol02, Statement: b2.Statement, Delegation: b1.Delegation, Acceptance: b1.Acceptance},
 		{Protocol: Protocol02, Statement: b2.Statement, Delegation: b2.Delegation, Acceptance: b1.Acceptance},
 		{Protocol: Protocol, Statement: b2.Statement, Delegation: b1.Delegation, Acceptance: b1.Acceptance},
-		{Protocol: "https://ifandonlyif.io/apostille/spec/0.3", Statement: b2.Statement, Delegation: b2.Delegation, Acceptance: b2.Acceptance},
+		{Protocol: Protocol03, Statement: b2.Statement, Delegation: b2.Delegation, Acceptance: b2.Acceptance},
 	} {
 		_, err := Issue(mixed, issuer, exampleIssuer, fixedNow.Add(time.Minute))
 		require.Error(t, err)
@@ -146,6 +161,7 @@ func TestIssuanceFollowsSourceVersion(t *testing.T) {
 func TestAcceptedProtocols(t *testing.T) {
 	b1, _, _, _ := fixtureFor(t, Protocol)
 	b2, _, _, _ := fixtureFor(t, Protocol02)
+	b3, _, _, _ := fixtureFor(t, Protocol03)
 	for _, tc := range []struct {
 		name     string
 		accepted []string
@@ -159,7 +175,12 @@ func TestAcceptedProtocols(t *testing.T) {
 		{"only 0.1 refuses 0.2", []string{Protocol}, b2, false},
 		{"both accept 0.2", []string{Protocol, Protocol02}, b2, true},
 		{"an empty list accepts nothing", []string{}, b1, false},
-		{"an unknown entry matches nothing", []string{"https://ifandonlyif.io/apostille/spec/0.3"}, b2, false},
+		{"unset accepts 0.3", nil, b3, true},
+		{"only 0.3 accepts 0.3", []string{Protocol03}, b3, true},
+		{"only 0.3 refuses 0.2", []string{Protocol03}, b2, false},
+		{"only 0.2 refuses 0.3", []string{Protocol02}, b3, false},
+		{"0.1 and 0.2 refuse 0.3", []string{Protocol, Protocol02}, b3, false},
+		{"an unknown entry matches nothing", []string{"https://ifandonlyif.io/apostille/spec/0.4"}, b2, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			v, err := VerifyBundle(tc.bundle, VerifyOptions{AcceptedProtocols: tc.accepted})
@@ -219,9 +240,9 @@ func TestThirdProfileSlotsIn(t *testing.T) {
 	extra := *profile02
 	extra.protocol, extra.domain = protocol, "9.9"
 	profiles = append(profiles, &extra)
-	t.Cleanup(func() { profiles = profiles[:2] })
+	t.Cleanup(func() { profiles = profiles[:3] })
 
-	require.Equal(t, []string{Protocol, Protocol02, protocol}, KnownProtocols())
+	require.Equal(t, []string{Protocol, Protocol02, Protocol03, protocol}, KnownProtocols())
 	b, _, _, issuer := fixtureFor(t, protocol)
 	v, err := VerifyBundle(b, VerifyOptions{ExpectedIssuer: exampleIssuer, TrustedKeyIDs: []string{issuer.KeyID()}, Now: fixedNow.Add(time.Hour)})
 	require.NoError(t, err)

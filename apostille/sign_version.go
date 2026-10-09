@@ -1,7 +1,6 @@
 package apostille
 
 import (
-	"crypto/ed25519"
 	"errors"
 	"time"
 )
@@ -33,8 +32,9 @@ func (s *Signer) SignFor(protocol, kind string, value any) (Envelope, error) {
 	if err != nil {
 		return Envelope{}, err
 	}
-	// Signer holds an Ed25519 key; a profile with another algorithm needs its own signer.
-	if prof.algorithm != Algorithm {
+	// A signer holds one algorithm's key; a profile with another algorithm
+	// needs its own signer, and this is refused before any work.
+	if prof.algorithm != s.Algorithm() {
 		return Envelope{}, errors.New("signer does not support the protocol's signature algorithm")
 	}
 	raw, err := Canonical(value)
@@ -49,11 +49,14 @@ func (s *Signer) SignFor(protocol, kind string, value any) (Envelope, error) {
 		return Envelope{}, errors.New("signed key ID does not match signer")
 	}
 	message := prof.signingInput(kind, raw)
-	signature := ed25519.Sign(s.key, message)
-	if err := prof.checkKey(s.key[32:]); err != nil {
+	signature, err := s.signMessage(message)
+	if err != nil {
 		return Envelope{}, err
 	}
-	if err := prof.verify(s.key[32:], message, signature); err != nil {
+	if err := prof.checkKey(s.publicKeyBytes()); err != nil {
+		return Envelope{}, err
+	}
+	if err := prof.verify(s.publicKeyBytes(), message, signature); err != nil {
 		return Envelope{}, err
 	}
 	return Envelope{Protocol: prof.protocol, Kind: kind, Payload: rawURL.EncodeToString(raw), PayloadSHA256: Hash(raw), Signature: Signature{Algorithm: prof.algorithm, KeyID: s.KeyID(), PublicKey: s.PublicKey(), Value: rawURL.EncodeToString(signature)}}, nil

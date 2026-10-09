@@ -46,7 +46,7 @@ func core02ExtraCases(t *testing.T) ([]bundleCase, []issuerConformanceCase) {
 // with signRaw, so a value the profile rejects is still validly signed.
 func (g caseGen) identifierChain(t *testing.T, audience, certIssuer string) (Bundle, *Signer) {
 	t.Helper()
-	admin, agent, issuer := testSigner(t, 1), testSigner(t, 2), testSigner(t, 3)
+	admin, agent, issuer := g.signer(t, 1), g.signer(t, 2), g.signer(t, 3)
 	d := Delegation{Header: g.header(KindDelegation, KeyIdentity(admin.KeyID()), admin, fixedNow), AgentID: agentID, AgentKeyID: agent.KeyID(), AgentPublicKey: agent.PublicKey(), ServiceAudience: audience, NotBefore: fixedNow.Format(TimestampLayout), ExpiresAt: fixedNow.Add(48 * time.Hour).Format(TimestampLayout), Scopes: []string{"sign_origin_statement"}}
 	dp, err := Canonical(d)
 	requireNoErr(t, "identifierChain", err)
@@ -529,9 +529,10 @@ func (g caseGen) crossVersionCases(t *testing.T) []bundleCase {
 		"A genuine 0.1 statement with only the bundle and envelope protocol changed to 0.2, its payload and signature untouched.",
 		rawJSON(t, bad), VerifyOptions{}, "invalid source signature"))
 
-	// Unknown versions fail closed.
+	// Unknown versions fail closed. The unknown value must never become a real
+	// version, or the case would silently turn into a mixed-version case.
 	for _, tc := range []struct{ name, reason, value, wantErr string }{
-		{"reject/unknown-bundle-protocol", "A bundle whose protocol names a version this profile does not define is rejected.", "https://ifandonlyif.io/apostille/spec/0.3", "unsupported bundle protocol"},
+		{"reject/unknown-bundle-protocol", "A bundle whose protocol names a version this profile does not define is rejected.", protocolNeverDefined, "unsupported bundle protocol"},
 		{"reject/empty-bundle-protocol", "An empty bundle protocol selects no rule set.", "", "unsupported bundle protocol"},
 	} {
 		value := tc.value
@@ -541,7 +542,10 @@ func (g caseGen) crossVersionCases(t *testing.T) []bundleCase {
 	out = append(out, rejectCase(t, "reject/unknown-envelope-protocol",
 		"An envelope naming an unknown version inside a 0.2 bundle.",
 		mutateJSON(t, b2, func(m map[string]any) {
-			m["statement"].(map[string]any)["protocol"] = "https://ifandonlyif.io/apostille/spec/0.3"
+			m["statement"].(map[string]any)["protocol"] = protocolNeverDefined
 		}), opts, "bundle mixes protocol versions"))
 	return out
 }
+
+// protocolNeverDefined is a protocol identifier no Core version will use.
+const protocolNeverDefined = "https://ifandonlyif.io/apostille/spec/never-defined"

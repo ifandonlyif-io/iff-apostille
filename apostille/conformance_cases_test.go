@@ -2,7 +2,6 @@ package apostille
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -112,9 +111,13 @@ type caseGen struct {
 var (
 	gen01 = caseGen{profile01, Protocol}
 	gen02 = caseGen{profile02, Protocol02}
+	gen03 = caseGen{profile03, Protocol03}
 )
 
-// version is the short name used in informative text: "0.1" or "0.2".
+// signer is fixture signer n under g's algorithm (testSignerFor).
+func (g caseGen) signer(t testing.TB, n byte) *Signer { return testSignerFor(t, g.protocol, n) }
+
+// version is the short name used in informative text: "0.1", "0.2" or "0.3".
 func (g caseGen) version() string { return g.prof.domain }
 
 // otherProtocol is a known protocol identifier other than g's.
@@ -177,7 +180,7 @@ func (g caseGen) producerOnlyStatement(s *Signer) Statement {
 // delegation/acceptance/certificate, signed by testSigner(t,4).
 func (g caseGen) producerOnly(t *testing.T) (Bundle, *Signer) {
 	t.Helper()
-	s := testSigner(t, 4)
+	s := g.signer(t, 4)
 	se := g.mustSign(t, s, KindStatement, g.producerOnlyStatement(s))
 	return Bundle{Protocol: g.protocol, Statement: se}, s
 }
@@ -192,8 +195,11 @@ func signRaw(t testing.TB, s *Signer, kind string, payload []byte) Envelope {
 func (g caseGen) signRaw(t testing.TB, s *Signer, kind string, payload []byte) Envelope {
 	t.Helper()
 	input := g.prof.signingInput(kind, payload)
-	sig := ed25519.Sign(s.key, input)
-	if !ed25519.Verify(s.key.Public().(ed25519.PublicKey), input, sig) {
+	sig, err := s.signMessage(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.prof.verify(s.publicKeyBytes(), input, sig) != nil {
 		t.Fatal("signRaw: produced signature does not verify")
 	}
 	return Envelope{
@@ -788,7 +794,7 @@ func (g caseGen) bundleStructureCases(t *testing.T) []bundleCase {
 		}), opts, "bundle mixes protocol versions"))
 
 	out = append(out, rejectCase(t, "reject/unsupported-algorithm",
-		"A signature algorithm other than Ed25519 is rejected; there is no negotiation or fallback.",
+		"A signature algorithm other than "+g.prof.algorithm+" is rejected; there is no negotiation or fallback.",
 		mutateJSON(t, b, func(m map[string]any) {
 			m["statement"].(map[string]any)["signature"].(map[string]any)["algorithm"] = "Ed25519ph"
 		}), opts, "unsupported envelope protocol or algorithm"))
@@ -957,7 +963,7 @@ func (g caseGen) bundleSignatureMalleabilityCases(t *testing.T) []bundleCase {
 
 func (g caseGen) bundleFieldValueCases(t *testing.T) []bundleCase {
 	t.Helper()
-	s := testSigner(t, 4)
+	s := g.signer(t, 4)
 	base := g.producerOnlyStatement(s)
 	if _, err := Verify(rawJSON(t, Bundle{Protocol: g.protocol, Statement: g.mustSign(t, s, KindStatement, base)}), VerifyOptions{}); err != nil {
 		t.Fatalf("bundleFieldValueCases: unmutated base statement failed to verify: %v", err)
@@ -1042,7 +1048,7 @@ func (g caseGen) bundleFieldValueCases(t *testing.T) []bundleCase {
 		func(st *Statement) { st.Issuer = "urn:apostille:key:sha256:" + strings.Repeat("0", 64) }, "source issuer must identify agent key"))
 	out = append(out, build("reject/signed-key-id-mismatch",
 		"A statement issuer_key_id that does not match the envelope's real signing key is rejected.",
-		func(st *Statement) { st.IssuerKeyID = testSigner(t, 1).KeyID() }, "signed key ID mismatch"))
+		func(st *Statement) { st.IssuerKeyID = g.signer(t, 1).KeyID() }, "signed key ID mismatch"))
 	out = append(out, build("reject/payload-kind-mismatch",
 		"A payload whose signed kind is agent-acceptance, carried inside an origin-statement envelope, is rejected: the envelope's real kind and the signed kind must match.",
 		func(st *Statement) { st.Kind = KindAcceptance }, "invalid signed protocol header"))
@@ -1186,7 +1192,7 @@ func (g caseGen) bundleBindingCases(t *testing.T) []bundleCase {
 	t.Helper()
 	b, admin, agent, issuer := g.fixedBundle(t)
 	opts := pin(issuer)
-	signer4 := testSigner(t, 4)
+	signer4 := g.signer(t, 4)
 	var out []bundleCase
 
 	// certificate-grafted-onto-other-statement: re-sign the statement over a
@@ -1913,7 +1919,9 @@ func writeConformanceCases(t *testing.T, g caseGen, extra func(t *testing.T) ([]
 	bundleCases = append(bundleCases, g.bundleTamperingCases(t)...)
 	bundleCases = append(bundleCases, g.bundleStructureCases(t)...)
 	bundleCases = append(bundleCases, g.bundlePayloadEncodingCases(t)...)
-	bundleCases = append(bundleCases, g.bundleSignatureMalleabilityCases(t)...)
+	if g.prof.algorithm == Algorithm { // the S+L case is specific to Ed25519
+		bundleCases = append(bundleCases, g.bundleSignatureMalleabilityCases(t)...)
+	}
 	bundleCases = append(bundleCases, g.bundleFieldValueCases(t)...)
 	bundleCases = append(bundleCases, g.bundleCertificateIssuerSyntaxCases(t)...)
 	bundleCases = append(bundleCases, g.bundleCertificateAssertionCases(t)...)
@@ -2056,7 +2064,7 @@ func TestConformanceCases(t *testing.T) {
 	for _, tc := range []struct {
 		g           caseGen
 		validIssuer func(string) bool
-	}{{gen01, ValidIssuer}, {gen02, ValidIssuer02}} {
+	}{{gen01, ValidIssuer}, {gen02, ValidIssuer02}, {gen03, ValidIssuer02}} {
 		t.Run("core-"+tc.g.version(), func(t *testing.T) {
 			runConformanceCases(t, tc.g.casesPath(), tc.g.protocol, tc.validIssuer)
 		})

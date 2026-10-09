@@ -16,12 +16,34 @@ const exampleIssuer = "https://issuer.example/apostille"
 const agentID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 const nonceID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 
-func testSigner(t *testing.T, n byte) *Signer {
+func testSigner(t testing.TB, n byte) *Signer {
 	t.Helper()
 	s, e := NewSigner(base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{n}, 32)))
 	if e != nil {
 		t.Fatal(e)
 	}
+	return s
+}
+
+// testSignerFor is the fixture signer n for protocol's algorithm: the same 32
+// repeated bytes as testSigner, as an Ed25519 seed for 0.1 and 0.2 and as an
+// ML-DSA-65 seed for 0.3. Reusing a seed across algorithms is for public test
+// material only. The ML-DSA signer signs deterministically so that published
+// vectors are reproducible; production signers never do.
+func testSignerFor(t testing.TB, protocol string, n byte) *Signer {
+	t.Helper()
+	prof, err := profileFor(protocol)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prof.algorithm != Algorithm03 {
+		return testSigner(t, n)
+	}
+	s, err := NewMLDSASigner(base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{n}, 32)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.deterministic = true
 	return s
 }
 func mustSign(t *testing.T, s *Signer, kind string, p any) Envelope {
@@ -44,7 +66,14 @@ func fixture(t *testing.T) (Bundle, *Signer, *Signer, *Signer) {
 // fixtureFor builds the delegated, issued bundle of one protocol version.
 func fixtureFor(t *testing.T, protocol string) (Bundle, *Signer, *Signer, *Signer) {
 	t.Helper()
-	admin, agent, issuer := testSigner(t, 1), testSigner(t, 2), testSigner(t, 3)
+	return fixtureSigned(t, protocol, func(n byte) *Signer { return testSignerFor(t, protocol, n) })
+}
+
+// fixtureSigned is fixtureFor with the signers supplied by signer(n), n = 1 for
+// the administrator, 2 for the agent and 3 for the issuer.
+func fixtureSigned(t *testing.T, protocol string, signer func(n byte) *Signer) (Bundle, *Signer, *Signer, *Signer) {
+	t.Helper()
+	admin, agent, issuer := signer(1), signer(2), signer(3)
 	d := Delegation{Header: headerFor(protocol, KindDelegation, KeyIdentity(admin.KeyID()), admin, fixedNow), AgentID: agentID, AgentKeyID: agent.KeyID(), AgentPublicKey: agent.PublicKey(), ServiceAudience: exampleIssuer, NotBefore: fixedNow.Format(TimestampLayout), ExpiresAt: fixedNow.Add(48 * time.Hour).Format(TimestampLayout), Scopes: []string{"sign_origin_statement"}}
 	de := mustSignFor(t, protocol, admin, KindDelegation, d)
 	dh, _ := EnvelopeDigest(de)

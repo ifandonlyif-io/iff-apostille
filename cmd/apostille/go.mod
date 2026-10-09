@@ -2,7 +2,7 @@ module github.com/ifandonlyif-io/iff-apostille/cmd/apostille
 
 go 1.25.7
 
-toolchain go1.26.6
+toolchain go1.27.2
 
 require (
 	github.com/ifandonlyif-io/iff-apostille v0.1.0-alpha.1

@@ -3,6 +3,7 @@ package apostille
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -28,7 +29,15 @@ var (
 	decimalPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,18})$`)
 )
 
-type Signer struct{ key ed25519.PrivateKey }
+// Signer holds one private key of one signature algorithm: key for Ed25519
+// (Core 0.1 and 0.2), ml for ML-DSA-65 (Core 0.3). A zero Signer is disabled.
+type Signer struct {
+	key ed25519.PrivateKey
+	ml  *mldsa.PrivateKey
+	// deterministic selects FIPS 204's deterministic signing variant, which
+	// only published test vectors may use. No non-test code sets it.
+	deterministic bool
+}
 
 func NewSigner(encoded string) (*Signer, error) {
 	if encoded == "" {
@@ -65,18 +74,60 @@ func GenerateKey() (seed string, publicKey string, err error) {
 	}
 	return rawURL.EncodeToString(key.Seed()), rawURL.EncodeToString(pub), nil
 }
-func (s *Signer) Enabled() bool { return s != nil && len(s.key) == ed25519.PrivateKeySize }
+func (s *Signer) Enabled() bool { return s.Algorithm() != "" }
+
+// Algorithm is the signature.algorithm value of the signer's key: Algorithm
+// ("Ed25519") for NewSigner, Algorithm03 ("ML-DSA-65") for NewMLDSASigner, and
+// "" for a disabled signer.
+func (s *Signer) Algorithm() string {
+	switch {
+	case s == nil:
+		return ""
+	case s.ml != nil:
+		return Algorithm03
+	case len(s.key) == ed25519.PrivateKeySize:
+		return Algorithm
+	}
+	return ""
+}
+
+// publicKeyBytes is the raw public key, or nil for a disabled signer.
+func (s *Signer) publicKeyBytes() []byte {
+	switch s.Algorithm() {
+	case Algorithm:
+		return s.key[32:]
+	case Algorithm03:
+		return s.ml.PublicKey().Bytes()
+	}
+	return nil
+}
 func (s *Signer) PublicKey() string {
 	if !s.Enabled() {
 		return ""
 	}
-	return rawURL.EncodeToString(s.key[32:])
+	return rawURL.EncodeToString(s.publicKeyBytes())
 }
 func (s *Signer) KeyID() string {
 	if !s.Enabled() {
 		return ""
 	}
-	return Fingerprint(s.key[32:])
+	return Fingerprint(s.publicKeyBytes())
+}
+
+// signMessage signs message with the signer's algorithm. ML-DSA-65 signing is
+// the hedged, pure variant with the empty context unless a test has set
+// deterministic.
+func (s *Signer) signMessage(message []byte) ([]byte, error) {
+	switch s.Algorithm() {
+	case Algorithm:
+		return ed25519.Sign(s.key, message), nil
+	case Algorithm03:
+		if s.deterministic {
+			return s.ml.SignDeterministic(message, &mldsa.Options{})
+		}
+		return s.ml.Sign(nil, message, &mldsa.Options{})
+	}
+	return nil, errors.New("signing key required")
 }
 func Fingerprint(key []byte) string   { return "sha256:" + Hash(key) }
 func KeyIdentity(keyID string) string { return "urn:apostille:key:" + keyID }
@@ -314,6 +365,9 @@ func DecodePayload(envelope Envelope, kind string, dst any) error {
 func (s *Signer) SignChallenge(message string) (string, error) {
 	if !s.Enabled() {
 		return "", errors.New("signing key required")
+	}
+	if s.Algorithm() != Algorithm {
+		return "", errors.New("the 0.1 login challenge needs an Ed25519 key")
 	}
 	if !strings.HasPrefix(message, "iff-apostille/login/0.1\n") || len(message) > 4096 {
 		return "", errors.New("invalid login challenge")

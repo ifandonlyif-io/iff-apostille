@@ -1,5 +1,5 @@
 // Package apostille implements the issuer-neutral Apostille draft profiles
-// (Core 0.1 and Core 0.2).
+// (Core 0.1, 0.2 and 0.3).
 // It has no server, database, wallet, network, or IFF account dependency.
 package apostille
 

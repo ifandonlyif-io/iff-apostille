@@ -2,6 +2,7 @@ package apostille
 
 import (
 	"crypto/ed25519"
+	"crypto/mldsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
@@ -12,6 +13,14 @@ import (
 // identifier grammar, strict Ed25519 keys and signatures, and no mixing of
 // versions inside one bundle. See docs/apostille/spec/core-0.2.md.
 const Protocol02 = "https://ifandonlyif.io/apostille/spec/0.2"
+
+// Protocol03 identifies Core 0.3: Core 0.2 with every signature ML-DSA-65
+// (FIPS 204, pure, empty context) and 1952-byte public keys. See
+// docs/apostille/spec/core-0.3.md.
+const Protocol03 = "https://ifandonlyif.io/apostille/spec/0.3"
+
+// Algorithm03 is the signature.algorithm value of Core 0.3.
+const Algorithm03 = "ML-DSA-65"
 
 // profile holds everything that differs between protocol versions. Verification
 // and signing select one by protocol string and never branch on the version
@@ -64,8 +73,37 @@ var profile02 = &profile{
 	verify:        verifyStrictSignature,
 }
 
+// profile03 has no key check beyond length: every 1952-byte string is a
+// decodable ML-DSA-65 public key, and decodePublicKey has already enforced the
+// length. verify passes an explicit empty context; HashML-DSA, external-mu and
+// non-empty-context signatures do not verify under it.
+var profile03 = &profile{
+	protocol:      Protocol03,
+	domain:        "0.3",
+	algorithm:     Algorithm03,
+	publicKeySize: mldsa.MLDSA65().PublicKeySize(),
+	signatureSize: mldsa.MLDSA65().SignatureSize(),
+	validIssuer:   ValidIssuer02,
+	checkKey: func(key []byte) error {
+		if len(key) != mldsa.MLDSA65().PublicKeySize() {
+			return errors.New("invalid ML-DSA-65 public key length")
+		}
+		return nil
+	},
+	verify: func(key, message, signature []byte) error {
+		pk, err := mldsa.NewPublicKey(mldsa.MLDSA65(), key)
+		if err != nil {
+			return errInvalidSignature
+		}
+		if err := mldsa.Verify(pk, message, signature, &mldsa.Options{}); err != nil {
+			return errInvalidSignature
+		}
+		return nil
+	},
+}
+
 // profiles lists every known version, oldest first.
-var profiles = []*profile{profile01, profile02}
+var profiles = []*profile{profile01, profile02, profile03}
 
 // KnownProtocols returns every protocol identifier this implementation
 // verifies and signs, oldest first.
@@ -106,18 +144,25 @@ func (p *profile) signingInput(kind string, payload []byte) []byte {
 }
 
 // decodePublicKey returns the raw key of a canonical unpadded base64url field
-// of exactly the profile's size. It does not apply checkKey.
+// of exactly the profile's size; the encoded length is checked before any
+// decoding. It does not apply checkKey.
 func (p *profile) decodePublicKey(value string) ([]byte, error) {
+	if len(value) != p.encodedPublicKeyLen() {
+		return nil, errors.New("invalid canonical public key")
+	}
 	raw, err := rawURL.DecodeString(value)
-	if err != nil || len(raw) != p.publicKeySize || len(value) != p.encodedPublicKeyLen() || rawURL.EncodeToString(raw) != value {
+	if err != nil || len(raw) != p.publicKeySize || rawURL.EncodeToString(raw) != value {
 		return nil, errors.New("invalid canonical public key")
 	}
 	return raw, nil
 }
 
 func (p *profile) decodeSignature(value string) ([]byte, error) {
+	if len(value) != p.encodedSignatureLen() {
+		return nil, errInvalidSignature
+	}
 	raw, err := rawURL.DecodeString(value)
-	if err != nil || len(raw) != p.signatureSize || len(value) != p.encodedSignatureLen() || rawURL.EncodeToString(raw) != value {
+	if err != nil || len(raw) != p.signatureSize || rawURL.EncodeToString(raw) != value {
 		return nil, errInvalidSignature
 	}
 	return raw, nil

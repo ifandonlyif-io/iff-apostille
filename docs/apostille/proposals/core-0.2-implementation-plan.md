@@ -271,7 +271,7 @@ the code may have moved.
 13. **Fuzz throughput varies run to run** because the corpus persists in the Go
     build cache; it is not a signal. A crasher is written under
     `apostille/testdata/fuzz/` and must be kept and reported.
-14. **The case files are large** (about 600 KB each). Keep them out of
+14. **The case files are large** (0.1 about 600 KB, 0.2 about 1.2 MB, 0.3 about 7.7 MB). Keep them out of
     `package.json` `files` and `scripts/build-verifier.py`; the SDK build copies
     them into git-ignored `spec/` for tests.
 
@@ -386,7 +386,7 @@ Outcome (2026-10-09):
   every known version; any other list, even an empty one, accepts only its
   members.
 - **Vectors.** `core-0.2.json` (sha256 `a95423ed…4c3f`) and `core-0.2-cases.json`
-  (sha256 `bc09aea2…a85e`, 1.23 MB) are identical across two generator
+  (sha256 `2b0943ab…d942`, 1.23 MB; regenerated during 0.3 Phase 2 so that the unknown-version cases name `…/spec/never-defined` instead of the 0.3 identifier, which had become known — no other case changed) are identical across two generator
   processes. The case file has 240 bundle cases (28 accept, 212 reject), 54
   strict JSON cases and 353 identifier cases. Among the bundle cases are 33
   Ed25519 rejects: all eight small-order and three mixed-order `A`, non-canonical

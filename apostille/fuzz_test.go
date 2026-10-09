@@ -13,23 +13,20 @@ import (
 // built through the public API rather than the *testing.T helpers in
 // apostille_test.go.
 
-// fuzzSigner is testSigner for a *testing.F.
-func fuzzSigner(f testing.TB, n byte) *Signer {
+// fuzzSigner is testSignerFor for a *testing.F.
+func fuzzSigner(f testing.TB, protocol string, n byte) *Signer {
 	f.Helper()
-	s, err := NewSigner(rawURL.EncodeToString(bytes.Repeat([]byte{n}, 32)))
-	if err != nil {
-		f.Fatalf("fuzzSigner(%d): %v", n, err)
-	}
-	return s
+	return testSignerFor(f, protocol, n)
 }
 
 // fuzzConformanceFiles reads and decodes both versions' case files
-// (testdata/apostille/core-0.1-cases.json and core-0.2-cases.json) for
+// (testdata/apostille/core-0.1-cases.json, core-0.2-cases.json and
+// core-0.3-cases.json) for
 // seeding; they are never written to.
 func fuzzConformanceFiles(f *testing.F) []conformanceFile {
 	f.Helper()
 	var files []conformanceFile
-	for _, g := range []caseGen{gen01, gen02} {
+	for _, g := range []caseGen{gen01, gen02, gen03} {
 		raw, err := os.ReadFile(g.casesPath())
 		if err != nil {
 			f.Fatalf("reading conformance cases: %v", err)
@@ -211,7 +208,7 @@ var fuzzSignedPayloadKinds = [5]string{KindStatement, KindDelegation, KindAccept
 // TestPublicationGrant.
 func fuzzSignedPayloadSeeds(f testing.TB, g caseGen) [5][]byte {
 	f.Helper()
-	admin, agent, issuer := fuzzSigner(f, 1), fuzzSigner(f, 2), fuzzSigner(f, 3)
+	admin, agent, issuer := fuzzSigner(f, g.protocol, 1), fuzzSigner(f, g.protocol, 2), fuzzSigner(f, g.protocol, 3)
 
 	d := Delegation{Header: g.header(KindDelegation, KeyIdentity(admin.KeyID()), admin, fixedNow), AgentID: agentID, AgentKeyID: agent.KeyID(), AgentPublicKey: agent.PublicKey(), ServiceAudience: exampleIssuer, NotBefore: fixedNow.Format(TimestampLayout), ExpiresAt: fixedNow.Add(48 * time.Hour).Format(TimestampLayout), Scopes: []string{"sign_origin_statement"}}
 	dPayload, err := Canonical(d)
@@ -268,14 +265,17 @@ func FuzzSignedPayload(f *testing.F) {
 	// agent, admin, issuer), so every seed starts on the accept path and
 	// mutations explore that kind's field rules rather than a key mismatch.
 	// The version selector picks the protocol the payload is signed under.
-	admin, agent, issuer := fuzzSigner(f, 1), fuzzSigner(f, 2), fuzzSigner(f, 3)
-	signers := [5]*Signer{agent, admin, agent, admin, issuer}
-	versions := [2]caseGen{gen01, gen02}
+	versions := [3]caseGen{gen01, gen02, gen03}
+	var signers [3][5]*Signer
+	for v, g := range versions {
+		admin, agent, issuer := fuzzSigner(f, g.protocol, 1), fuzzSigner(f, g.protocol, 2), fuzzSigner(f, g.protocol, 3)
+		signers[v] = [5]*Signer{agent, admin, agent, admin, issuer}
+	}
 
 	for v, g := range versions {
 		seeds := fuzzSignedPayloadSeeds(f, g)
 		for i, payload := range seeds {
-			if _, err := VerifyEnvelope(g.signRaw(f, signers[i], fuzzSignedPayloadKinds[i], payload)); err != nil {
+			if _, err := VerifyEnvelope(g.signRaw(f, signers[v][i], fuzzSignedPayloadKinds[i], payload)); err != nil {
 				f.Fatalf("%s %s seed is not on the accept path: %v", g.version(), fuzzSignedPayloadKinds[i], err)
 			}
 			matching := uint8(i)
@@ -289,12 +289,13 @@ func FuzzSignedPayload(f *testing.F) {
 		if len(payload) == 0 || len(payload) > MaxInputBytes/2 {
 			return
 		}
-		g := versions[int(version)%len(versions)]
+		vi := int(version) % len(versions)
+		g := versions[vi]
 		i := int(kind) % len(fuzzSignedPayloadKinds)
 		k := fuzzSignedPayloadKinds[i]
 		// A real signature over the arbitrary bytes puts the fuzzer past the
 		// signature check and onto payload validation.
-		env := g.signRaw(t, signers[i], k, payload)
+		env := g.signRaw(t, signers[vi][i], k, payload)
 		v, err := VerifyEnvelope(env)
 		if err != nil {
 			return
