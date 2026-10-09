@@ -1,4 +1,4 @@
-// apostille is a local-only CLI for the issuer-neutral Apostille 0.1 draft.
+// apostille is a local-only CLI for the issuer-neutral Apostille draft (Core 0.1, 0.2 and 0.3).
 package main
 
 import (
@@ -36,14 +36,6 @@ type exitError struct {
 
 func (e *exitError) Error() string { return e.err.Error() }
 func (e *exitError) Unwrap() error { return e.err }
-
-type keyFile struct {
-	Protocol  string `json:"protocol"`
-	KeyID     string `json:"key_id"`
-	PublicKey string `json:"public_key"`
-	Seed      string `json:"seed"`
-	Role      string `json:"role,omitempty"`
-}
 
 func main() {
 	app := application{stdout: os.Stdout, stderr: os.Stderr, now: time.Now}
@@ -98,6 +90,7 @@ func (a application) keygen(ctx context.Context, args []string) error {
 	flags := a.flags("keygen")
 	out := flags.String("out", "", "new private key JSON file")
 	role := flags.String("role", "", "optional local key role label")
+	algorithm := flags.String("algorithm", "ed25519", "key algorithm: ed25519 (Core 0.1 and 0.2) or ml-dsa-65 (Core 0.3)")
 	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
@@ -107,20 +100,31 @@ func (a application) keygen(ctx context.Context, args []string) error {
 	if *out == "" {
 		return errors.New("keygen requires --out")
 	}
+	if *algorithm != "ed25519" && *algorithm != "ml-dsa-65" {
+		return errors.New("algorithm must be ed25519 or ml-dsa-65")
+	}
 	if len(*role) > 64 || strings.TrimSpace(*role) != *role || strings.ContainsAny(*role, "\r\n\x00") {
 		return errors.New("role must be a trimmed label of at most 64 characters")
 	}
-	seed, publicKey, err := core.GenerateKey()
-	if err != nil {
-		return err
-	}
-	signer, err := core.NewSigner(seed)
-	if err != nil {
-		return err
-	}
-	key := keyFile{
-		Protocol: core.Protocol, KeyID: signer.KeyID(), PublicKey: publicKey,
-		Seed: seed, Role: *role,
+	var key core.KeyFile
+	if *algorithm == "ml-dsa-65" {
+		var err error
+		if key, err = core.GenerateMLDSAKeyFile(*role); err != nil {
+			return err
+		}
+	} else {
+		seed, publicKey, err := core.GenerateKey()
+		if err != nil {
+			return err
+		}
+		signer, err := core.NewSigner(seed)
+		if err != nil {
+			return err
+		}
+		key = core.KeyFile{
+			Protocol: core.Protocol, KeyID: signer.KeyID(), PublicKey: publicKey,
+			Seed: seed, Role: *role,
+		}
 	}
 	if err := writeJSONExclusive(*out, key, 0o600); err != nil {
 		return err
@@ -140,7 +144,12 @@ func (a application) delegate(ctx context.Context, args []string) error {
 	audience := flags.String("audience", "", "exact service issuer URI")
 	out := flags.String("out", "", "new registration JSON file")
 	days30 := flags.Bool("days30", false, "make delegation valid for 30 days instead of 24 hours")
+	protocolFlag := flags.String("protocol", "0.1", "Core version to sign: 0.1, 0.2 or 0.3")
 	if err := parseFlags(flags, args); err != nil {
+		return err
+	}
+	protocol, err := parseProtocol(*protocolFlag)
+	if err != nil {
 		return err
 	}
 	if *adminPath == "" || *agentPath == "" || *audience == "" || *out == "" {
@@ -153,8 +162,14 @@ func (a application) delegate(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("admin key: %w", err)
 	}
+	if err := requireKeyFor(protocol, admin); err != nil {
+		return fmt.Errorf("admin key: %w", err)
+	}
 	agent, _, err := readSigner(*agentPath)
 	if err != nil {
+		return fmt.Errorf("agent key: %w", err)
+	}
+	if err := requireKeyFor(protocol, agent); err != nil {
 		return fmt.Errorf("agent key: %w", err)
 	}
 	if *agentID == "" {
@@ -171,14 +186,18 @@ func (a application) delegate(ctx context.Context, args []string) error {
 	if *days30 {
 		validFor = 30 * 24 * time.Hour
 	}
+	delegationHeader, err := core.NewHeaderFor(protocol, core.KindDelegation, core.KeyIdentity(admin.KeyID()), admin, now)
+	if err != nil {
+		return err
+	}
 	delegation := core.Delegation{
-		Header:  core.NewHeader(core.KindDelegation, core.KeyIdentity(admin.KeyID()), admin, now),
+		Header:  delegationHeader,
 		AgentID: *agentID, AgentKeyID: agent.KeyID(), AgentPublicKey: agent.PublicKey(),
 		ServiceAudience: *audience, NotBefore: now.Format(core.TimestampLayout),
 		ExpiresAt: now.Add(validFor).Format(core.TimestampLayout),
 		Scopes:    []string{"sign_origin_statement"},
 	}
-	signedDelegation, err := admin.Sign(core.KindDelegation, delegation)
+	signedDelegation, err := admin.SignFor(protocol, core.KindDelegation, delegation)
 	if err != nil {
 		return fmt.Errorf("sign delegation: %w", err)
 	}
@@ -186,11 +205,15 @@ func (a application) delegate(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	acceptanceHeader, err := core.NewHeaderFor(protocol, core.KindAcceptance, core.KeyIdentity(agent.KeyID()), agent, now)
+	if err != nil {
+		return err
+	}
 	acceptance := core.Acceptance{
-		Header:  core.NewHeader(core.KindAcceptance, core.KeyIdentity(agent.KeyID()), agent, now),
+		Header:  acceptanceHeader,
 		AgentID: *agentID, DelegationSHA256: delegationHash,
 	}
-	signedAcceptance, err := agent.Sign(core.KindAcceptance, acceptance)
+	signedAcceptance, err := agent.SignFor(protocol, core.KindAcceptance, acceptance)
 	if err != nil {
 		return fmt.Errorf("sign acceptance: %w", err)
 	}
@@ -218,7 +241,12 @@ func (a application) sign(ctx context.Context, args []string) error {
 	out := flags.String("out", "", "new signed statement JSON file")
 	registrationPath := flags.String("registration", "", "agent registration JSON file")
 	agentID := flags.String("agent-id", "", "agent UUID for producer-only statements")
+	protocolFlag := flags.String("protocol", "0.1", "Core version to sign: 0.1, 0.2 or 0.3")
 	if err := parseFlags(flags, args); err != nil {
+		return err
+	}
+	protocol, err := parseProtocol(*protocolFlag)
+	if err != nil {
 		return err
 	}
 	if *keyPath == "" || *filePath == "" || *out == "" {
@@ -231,11 +259,17 @@ func (a application) sign(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("agent key: %w", err)
 	}
+	if err := requireKeyFor(protocol, agent); err != nil {
+		return fmt.Errorf("agent key: %w", err)
+	}
 	now := a.utcNow()
 	delegationHash := ""
 	if *registrationPath != "" {
 		registration, err := readRegistration(*registrationPath)
 		if err != nil {
+			return err
+		}
+		if err := requireSameProtocol(protocol, "registration", registration.Delegation.Protocol); err != nil {
 			return err
 		}
 		delegation, err := core.VerifyRegistration(registration, "", now)
@@ -261,13 +295,17 @@ func (a application) sign(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	statementHeader, err := core.NewHeaderFor(protocol, core.KindStatement, core.KeyIdentity(agent.KeyID()), agent, now)
+	if err != nil {
+		return err
+	}
 	statement := core.Statement{
-		Header:  core.NewHeader(core.KindStatement, core.KeyIdentity(agent.KeyID()), agent, now),
+		Header:  statementHeader,
 		AgentID: *agentID, DelegationSHA256: delegationHash,
 		ArtifactSHA256: artifactHash, ArtifactSize: strconv.FormatInt(artifactSize, 10),
 		ArtifactMediaType: artifactMediaType(*filePath), Nonce: nonce,
 	}
-	signed, err := agent.Sign(core.KindStatement, statement)
+	signed, err := agent.SignFor(protocol, core.KindStatement, statement)
 	if err != nil {
 		return fmt.Errorf("sign statement: %w", err)
 	}
@@ -290,7 +328,12 @@ func (a application) grant(ctx context.Context, args []string) error {
 	audience := flags.String("audience", "", "exact service issuer URI")
 	visibility := flags.String("visibility", "", "private or public")
 	out := flags.String("out", "", "new publication grant JSON file")
+	protocolFlag := flags.String("protocol", "0.1", "Core version to sign: 0.1, 0.2 or 0.3")
 	if err := parseFlags(flags, args); err != nil {
+		return err
+	}
+	protocol, err := parseProtocol(*protocolFlag)
+	if err != nil {
 		return err
 	}
 	if *adminPath == "" || *statementPath == "" || *registrationPath == "" ||
@@ -307,12 +350,21 @@ func (a application) grant(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("admin key: %w", err)
 	}
+	if err := requireKeyFor(protocol, admin); err != nil {
+		return fmt.Errorf("admin key: %w", err)
+	}
 	statement, err := readEnvelope(*statementPath)
 	if err != nil {
 		return fmt.Errorf("statement: %w", err)
 	}
 	registration, err := readRegistration(*registrationPath)
 	if err != nil {
+		return err
+	}
+	if err := requireSameProtocol(protocol, "statement", statement.Protocol); err != nil {
+		return err
+	}
+	if err := requireSameProtocol(protocol, "registration", registration.Delegation.Protocol); err != nil {
 		return err
 	}
 	now := a.utcNow()
@@ -324,7 +376,7 @@ func (a application) grant(ctx context.Context, args []string) error {
 		return errors.New("admin key does not match registration")
 	}
 	if _, err := core.VerifyBundle(core.Bundle{
-		Protocol: core.Protocol, Statement: statement,
+		Protocol: protocol, Statement: statement,
 		Delegation: &registration.Delegation, Acceptance: &registration.Acceptance,
 	}, core.VerifyOptions{}); err != nil {
 		return fmt.Errorf("statement registration binding: %w", err)
@@ -341,14 +393,18 @@ func (a application) grant(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	grantHeader, err := core.NewHeaderFor(protocol, core.KindGrant, core.KeyIdentity(admin.KeyID()), admin, now)
+	if err != nil {
+		return err
+	}
 	grant := core.PublicationGrant{
-		Header:          core.NewHeader(core.KindGrant, core.KeyIdentity(admin.KeyID()), admin, now),
+		Header:          grantHeader,
 		StatementSHA256: statementHash, DelegationSHA256: delegationHash,
 		ServiceAudience: *audience, Visibility: *visibility,
 		Purpose: "issue_origin_certificate", ExpiresAt: now.Add(5 * time.Minute).Format(core.TimestampLayout),
 		Nonce: nonce,
 	}
-	signed, err := admin.Sign(core.KindGrant, grant)
+	signed, err := admin.SignFor(protocol, core.KindGrant, grant)
 	if err != nil {
 		return fmt.Errorf("sign publication grant: %w", err)
 	}
@@ -374,6 +430,7 @@ func (a application) issue(ctx context.Context, args []string) error {
 	statementPath := flags.String("statement", "", "signed statement JSON file")
 	registrationPath := flags.String("registration", "", "optional agent registration JSON file")
 	out := flags.String("out", "", "new certificate bundle JSON file")
+	protocolFlag := flags.String("protocol", "", "Core version of the statement: 0.1, 0.2 or 0.3; defaults to the statement's version")
 	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
@@ -388,7 +445,21 @@ func (a application) issue(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("statement: %w", err)
 	}
-	bundle := core.Bundle{Protocol: core.Protocol, Statement: statement}
+	// The certificate follows the bundle's version, which is the statement's.
+	protocol := statement.Protocol
+	if *protocolFlag != "" {
+		selected, err := parseProtocol(*protocolFlag)
+		if err != nil {
+			return err
+		}
+		if err := requireSameProtocol(selected, "statement", statement.Protocol); err != nil {
+			return err
+		}
+	}
+	if err := requireKeyFor(protocol, issuerSigner); err != nil {
+		return fmt.Errorf("issuer key: %w", err)
+	}
+	bundle := core.Bundle{Protocol: protocol, Statement: statement}
 	if *registrationPath != "" {
 		registration, err := readRegistration(*registrationPath)
 		if err != nil {
@@ -426,6 +497,8 @@ func (a application) verify(ctx context.Context, args []string) error {
 	at := flags.String("at", "", "evaluation time in RFC3339; defaults to current time")
 	artifactPath := flags.String("artifact", "", "optional original artifact to compare")
 	requireTrusted := flags.Bool("require-trusted", false, "fail unless both issuer and key ID match")
+	var accepted protocolList
+	flags.Var(&accepted, "accept-protocol", "accept only this Core version (0.1, 0.2 or 0.3); repeatable; default accepts all known versions")
 	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
@@ -453,6 +526,7 @@ func (a application) verify(ctx context.Context, args []string) error {
 	}
 	verification, err := core.Verify(raw, core.VerifyOptions{
 		ExpectedIssuer: *issuer, TrustedKeyIDs: trustedKeys, Now: now,
+		AcceptedProtocols: []string(accepted),
 	})
 	if err != nil {
 		_ = writeJSON(a.stdout, struct {
@@ -530,6 +604,12 @@ func (a application) verifyERC8004(ctx context.Context, args []string) error {
 		}{false, "verification_failed"})
 		return fmt.Errorf("verify ERC-8004 binding: %w", err)
 	}
+	if err := requireCore01("ERC-8004 binding profile", "binding delegation", document.Delegation.Protocol); err != nil {
+		return err
+	}
+	if err := requireCore01("ERC-8004 binding profile", "binding acceptance", document.Acceptance.Protocol); err != nil {
+		return err
+	}
 	trustedKeys := []string(nil)
 	if *keyID != "" {
 		trustedKeys = []string{*keyID}
@@ -603,27 +683,14 @@ func requireContext(ctx context.Context) error {
 	}
 }
 
-func readSigner(path string) (*core.Signer, keyFile, error) {
+func readSigner(path string) (*core.Signer, core.KeyFile, error) {
 	raw, err := readPrivateKeyFile(path)
 	if err != nil {
-		return nil, keyFile{}, err
+		return nil, core.KeyFile{}, err
 	}
-	var stored keyFile
-	if err := core.StrictJSON(raw, &stored); err != nil {
-		return nil, keyFile{}, fmt.Errorf("parse private key: %w", err)
-	}
-	if stored.Protocol != core.Protocol {
-		return nil, keyFile{}, errors.New("private key uses an unsupported protocol")
-	}
-	if len(stored.Role) > 64 || strings.ContainsAny(stored.Role, "\r\n\x00") {
-		return nil, keyFile{}, errors.New("private key role label is invalid")
-	}
-	signer, err := core.NewSigner(stored.Seed)
+	signer, stored, err := core.ParseKeyFile(raw)
 	if err != nil {
-		return nil, keyFile{}, err
-	}
-	if signer.KeyID() != stored.KeyID || signer.PublicKey() != stored.PublicKey {
-		return nil, keyFile{}, errors.New("private key metadata does not match its seed")
+		return nil, core.KeyFile{}, fmt.Errorf("parse private key: %w", err)
 	}
 	return signer, stored, nil
 }

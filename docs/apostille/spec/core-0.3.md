@@ -2,8 +2,8 @@
 
 Status: normative profile for 0.3 artifacts, accepted 2026-10-09 under
 [GOVERNANCE.md](../../../GOVERNANCE.md). The Go and JavaScript reference implementations and the conformance
-vectors (`testdata/apostille/core-0.3.json`, `core-0.3-cases.json`) exist in
-this source tree but are not yet in a tagged release; the
+vectors (`testdata/apostille/core-0.3.json`, `core-0.3-cases.json`) are released in
+`v0.3.0-alpha.1` (root Go module, 2026-10-09); the
 [implementation plan](../proposals/core-0.3-implementation-plan.md) tracks what has landed.
 [Core 0.1](core-0.1.md) and [Core 0.2](core-0.2.md) stay normative for their own
 artifacts. Licensed under the repository MIT LICENSE. This is not a

@@ -2,38 +2,38 @@
 
 [English](README.md) · [日本語](README.ja.md) · [繁體中文](README.zh-hant.md) · [简体中文](README.zh-hans.md)
 
-[网站](https://ifandonlyif.io/zh-hans/apostille) · [下载与安装](https://ifandonlyif.io/zh-hans/apostille/downloads) · [Alpha 发布](https://github.com/ifandonlyif-io/iff-apostille/releases/tag/v0.1.0-alpha.1)
+[网站](https://ifandonlyif.io/zh-hans/apostille) · [下载与安装](https://ifandonlyif.io/zh-hans/apostille/downloads) · [Alpha 发布](https://github.com/ifandonlyif-io/iff-apostille/releases/tag/v0.3.0-alpha.1)
 
 为 agent 产物提供可携带、不绑定特定 issuer 的签名。Agent 签署文件 manifest，管理员授权其密钥，issuer 记录已执行的检查。接收者可在本地验证 bundle，无需 IFF 账号或互联网连接。你可以使用 SDK，也可以依照公开规范与兼容性向量自行实现。
 
-**目前为 Alpha。** Core protocol `0.1`、Go 模块版本 `v0.1.0-alpha.1` 与 SDK 软件包版本 `0.1.0-alpha.1` 属于不同的版本命名空间。Go root 模块（`apostille`、`apostille/client`、`util`）已发布 `v0.1.0-alpha.1`；CLI 与 ZK 模块的标签分别为 `cmd/apostille/v0.1.0-alpha.1`、`apostille/zkbudget/v0.1.0-alpha.1`。尚未发布 npm 软件包或预编译 CLI 可执行文件。Core 0.2 与 Core 0.3 已在此源代码树中实现，但不属于 `v0.1.0-alpha.1`；详见[路线图](#roadmap)。
+**目前为 Alpha。** Core protocol `0.1`、Go 模块版本 `v0.3.0-alpha.1` 与 SDK 软件包版本 `0.1.0-alpha.1` 属于不同的版本命名空间。Go root 模块（`apostille`、`apostille/client`、`util`）已发布 `v0.3.0-alpha.1`；CLI 与 ZK 模块的标签分别为 `cmd/apostille/v0.3.0-alpha.1`、`apostille/zkbudget/v0.3.0-alpha.1`。使用这些模块需要 Go 1.27。尚未发布 npm 软件包或预编译 CLI 可执行文件。Core 0.2 与 Core 0.3 已在 `v0.3.0-alpha.1` 中发布，该版本包含 Core 0.1、0.2 与 0.3；详见[路线图](#roadmap)。
 
-此版本包含 215 个共同兼容性案例、Go/JavaScript differential 测试、fuzz 测试，以及未配对 Unicode surrogate 的处理修复。IFF 托管服务使用固定版本的公开 Go 模块。
+此版本按 Core 版本各附兼容性案例文件（0.1 有 215 个、0.2 有 647 个、0.3 有 676 个），并包含在 0.2 与 0.3 上无差异的 Go/JavaScript differential 测试与 fuzz 测试。IFF 托管服务使用固定版本的公开 Go 模块。
 
 ## 按用途选择工具
 
 - **收到 bundle 的接收者**：使用托管服务或本仓库提供的浏览器验证器，也可使用本地 CLI。两者的验证都无需 IFF 账号、密钥查询或网络连接。若已安装 Go 工具链：
 
   ```sh
-  go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.1.0-alpha.1
+  go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.3.0-alpha.1
   ```
 
   将 `GOBIN`（未设置时为 `GOPATH/bin`）加入 `PATH`。依照 [CLI 验证指南](docs/apostille/CLI.md)指定独立选定的 issuer/key pin；若信任条件不符时必须让命令失败，请加上 `--require-trusted`。
 - **Go 开发者**：添加已发布的模块。
 
   ```sh
-  go get github.com/ifandonlyif-io/iff-apostille@v0.1.0-alpha.1
+  go get github.com/ifandonlyif-io/iff-apostille@v0.3.0-alpha.1
   ```
 
-  API 参考：[pkg.go.dev](https://pkg.go.dev/github.com/ifandonlyif-io/iff-apostille@v0.1.0-alpha.1/apostille)。集成指南：[docs/apostille/SDK.md](docs/apostille/SDK.md)。
+  API 参考：[pkg.go.dev](https://pkg.go.dev/github.com/ifandonlyif-io/iff-apostille@v0.3.0-alpha.1/apostille)。集成指南：[docs/apostille/SDK.md](docs/apostille/SDK.md)。
 - **JavaScript 开发者**：按下方步骤，从此 checkout 打包 SDK；registry 发布另行规划。
 - **审查者与独立实现者**：从规范、schema、兼容性案例及 GitHub 标签源代码开始。
 
 | 组件 | 源代码 | 提供内容 |
 | --- | --- | --- |
 | Core 0.1 | [规范](docs/apostille/spec/core-0.1.md)、[schema](web/apostille-0.1.schema.json)、[vectors](testdata/apostille/core-0.1.json)、[cases](testdata/apostille/core-0.1-cases.json) | 确切字节，以及接受／拒绝验证案例 |
-| Core 0.2 | [规范](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)、[vectors](testdata/apostille/core-0.2.json)、[cases](testdata/apostille/core-0.2-cases.json) | 明确的标识符语法与严格 Ed25519；尚未发布 |
-| Core 0.3 | [规范](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)、[vectors](testdata/apostille/core-0.3.json)、[cases](testdata/apostille/core-0.3-cases.json) | ML-DSA-65（FIPS 204）签名；尚未发布 |
+| Core 0.2 | [规范](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)、[vectors](testdata/apostille/core-0.2.json)、[cases](testdata/apostille/core-0.2-cases.json) | 明确的标识符语法与严格 Ed25519；已在 `v0.3.0-alpha.1` 发布 |
+| Core 0.3 | [规范](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)、[vectors](testdata/apostille/core-0.3.json)、[cases](testdata/apostille/core-0.3-cases.json) | ML-DSA-65（FIPS 204）签名；已在 `v0.3.0-alpha.1` 发布 |
 | Go | [core](apostille/)、[API client](apostille/client/) | 离线签名与验证；显式调用才会使用托管 API |
 | JavaScript / TypeScript | [SDK](sdk/apostille-js/) | 默认 import 离线运行，另有独立 `/client` 入口 |
 | 本地 CLI | [命令](docs/apostille/CLI.md) | 密钥生成、签名、本地签发与验证 |
@@ -68,7 +68,7 @@ npm pack ./sdk/apostille-js --pack-destination ./dist
 
 ## 路线图
 
-Core 0.2（[规范](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）加入明确的标识符语法、严格 Ed25519 验证与版本命名空间。Core 0.3（[规范](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）沿用该语法，并以 ML-DSA-65（FIPS 204）签名。Go 与 JavaScript 参考实现、向量与兼容性案例都在此源代码树中；浏览器验证器可验证三个版本。CLI、托管服务与托管 API 客户端尚不支持 0.2 与 0.3。在宣布切换之前，默认签名版本仍为 Core 0.1；0.2 与 0.3 为明确选项。进度由 [0.2](docs/apostille/proposals/core-0.2-implementation-plan.md) 与 [0.3](docs/apostille/proposals/core-0.3-implementation-plan.md) 实现计划跟踪。JS SDK 的 npm 发布与预编译 CLI 可执行文件也在规划中，均不属于 `v0.1.0-alpha.1`。
+Core 0.2（[规范](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）加入明确的标识符语法、严格 Ed25519 验证与版本命名空间。Core 0.3（[规范](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）沿用该语法，并以 ML-DSA-65（FIPS 204）签名。Go 与 JavaScript 参考实现、向量与兼容性案例都在此源代码树中，并已在 `v0.3.0-alpha.1` 发布；浏览器验证器可验证三个版本，CLI 也已支持（`--protocol 0.1|0.2|0.3`、`keygen --algorithm ml-dsa-65`、`verify --accept-protocol`）。托管服务与托管 API 客户端尚不支持 0.2 与 0.3。在宣布切换之前，默认签名版本仍为 Core 0.1；0.2 与 0.3 为明确选项。进度由 [0.2](docs/apostille/proposals/core-0.2-implementation-plan.md) 与 [0.3](docs/apostille/proposals/core-0.3-implementation-plan.md) 实现计划跟踪。JS SDK 的 npm 发布与预编译 CLI 可执行文件也在规划中，均不属于 `v0.3.0-alpha.1`。
 
 ## 验证结果代表什么
 
