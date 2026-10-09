@@ -177,9 +177,30 @@ Signing defaults to Core 0.1. The [0.2](spec/core-0.2.md) and
   message, signature)` and `LOGIN_PREFIX_03` (`iff-apostille/login/0.3` plus LF)
   sign and check a login message of at most 4096 bytes with pure hedged
   ML-DSA-65 and the empty context. Go has `SignChallenge03` and
-  `VerifyChallenge03`. They are not wired into the hosted client or the console:
-  the hosted service does not accept Core 0.3 yet, `ApostilleClient` and
-  `signLogin` stay on Core 0.1, and `signLogin` refuses an ML-DSA-65 key.
+  `VerifyChallenge03`. The hosted clients use them: `login(signer)` /
+  `Login(ctx, signer)` with an ML-DSA-65 signer requests a 0.3 challenge (the
+  `iff-apostille/login/0.3` message, reconstructed and checked byte for byte
+  before signing) and answers with a 4412-character signature, while an Ed25519
+  signer stays on the 0.1 message; `createChallenge` / `CreateChallenge` accepts
+  either key type and rejects a message whose prefix does not match the key. The
+  browser console still disables hosted actions for ML-DSA-65 keys, and hosted
+  Core 0.3 is deployment pending on the server side (see [API.md](API.md)).
+- **Version-specific key directories.** `keysFor(protocol)` (Go
+  `KeysFor(ctx, protocol)`) fetches `/keys?protocol=<identifier>`; for Core 0.1 it
+  is `keys()`. It requires the directory to echo the requested protocol and the
+  pinned issuer, every key to carry that version's algorithm (`ML-DSA-65` for
+  0.3), a canonical key of that algorithm's exact size and a matching key ID. An
+  unsupported version (the hosted service does not issue 0.2) is HTTP 400
+  `unsupported_protocol_version`. `status()` also exposes `protocols`. Go adds
+  `ParsePublicKeyFor(protocol, encoded)` in the root package to decode a key of
+  the exact size for a known version. A grant of another version than its
+  statement is refused before anything is sent, and a submission response is
+  accepted only if its bundle carries the submitted statement's version. Signing
+  in with an ML-DSA-65 key starts its own workspace; an Ed25519 workspace is not
+  migrated (see [API.md](API.md)). This client support does not mean the hosted
+  service accepts Core 0.3: check `status().protocols`. Pin the hosted ML-DSA-65
+  issuer key ID in `TrustedKeyIDs` / `trustedKeyIDs` to get
+  `issuer_trust: accepted_by_policy` for a 0.3 certificate.
 - **Browser signing disclosure.** Browser ML-DSA-65 uses the vendored `@noble/post-quantum`, which states that it is not independently audited and does not claim constant-time signing. The browser console and
   key generation show this wherever an ML-DSA-65 key is generated or signs. For
   administrator keys the [CLI](CLI.md), which uses the Go standard library

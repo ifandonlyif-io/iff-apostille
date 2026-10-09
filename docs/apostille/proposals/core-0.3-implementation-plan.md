@@ -22,7 +22,7 @@ the acceptance criteria before the status table changes.
 | 3 | JS: vendored `@noble/post-quantum`, 0.3 verify and sign, consumers for 0.3 vectors, Go/JS differential at 0.3 | ✅ DONE | Landed 2026-10-09 with 0.2 Phase 3; 0.3 differential table empty |
 | 4 | CLI, browser verifier and signing UI (with the signing disclosure), docs, notices | ✅ DONE | Browser and docs landed 2026-10-09; CLI (`--protocol`, `keygen --algorithm ml-dsa-65`, `verify --accept-protocol`) landed after the root tag |
 | 5 | Release tags for the root and nested modules | 🟡 in progress | Root `v0.3.0-alpha.1` tagged 2026-10-09 at `9ba79a8` and verified through proxy.golang.org; `apostille/zkbudget` and `cmd/apostille` tags follow in release order |
-| 6 | Hosted service and API client (`iff-trust-oracle`) | ⬜ pending | External; ML-DSA issuer key provisioned by the owner |
+| 6 | Hosted service and API client (`iff-trust-oracle`) | 🟡 in progress: client side done in this branch; server in iff-trust-oracle | External; ML-DSA issuer key provisioned by the owner |
 | 7 | Default signing version switches from 0.1 to 0.3 | ⬜ pending | Gated on Phase 6 deployed, the announced date and the alpha notice |
 
 ## Approved decisions (do not relitigate)

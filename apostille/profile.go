@@ -173,3 +173,22 @@ func (p *profile) decodeSignature(value string) ([]byte, error) {
 func acceptsProtocol(accepted []string, protocol string) bool {
 	return accepted == nil || slices.Contains(accepted, protocol)
 }
+
+// ParsePublicKeyFor returns the raw public key of a canonical unpadded
+// base64url field of exactly the size of the known protocol's algorithm (32
+// bytes for Core 0.1 and 0.2, 1952 for Core 0.3) and applies that profile's key
+// check (strict Ed25519 for 0.2). Callers need not reimplement the sizes.
+func ParsePublicKeyFor(protocol, encoded string) ([]byte, error) {
+	prof, err := profileFor(protocol)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := prof.decodePublicKey(encoded)
+	if err != nil {
+		return nil, err
+	}
+	if err := prof.checkKey(raw); err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
