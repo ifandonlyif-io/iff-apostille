@@ -1,4 +1,5 @@
-// Package apostille implements the issuer-neutral Apostille 0.1 draft profile.
+// Package apostille implements the issuer-neutral Apostille draft profiles
+// (Core 0.1, 0.2 and 0.3).
 // It has no server, database, wallet, network, or IFF account dependency.
 package apostille
 
@@ -129,6 +130,11 @@ type Verification struct {
 type VerifyOptions struct {
 	ExpectedIssuer string
 	TrustedKeyIDs  []string
+	// AcceptedProtocols restricts the protocol versions a receiver accepts. A
+	// nil list accepts every version in KnownProtocols; any other list,
+	// including an empty one, accepts only its members, and a bundle of another
+	// version is rejected before any signature is checked.
+	AcceptedProtocols []string
 	// Zero time never establishes freshness. The caller supplies the evaluation time.
 	Now time.Time
 }

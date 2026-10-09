@@ -1,4 +1,4 @@
-import type { AgentRegistration, Bundle, Envelope, ERC8004BindingDocument, ERC8004Envelope, ERC8004Verification, Signer, Verification } from "./index.d.ts";
+import type { AgentRegistration, Bundle, Ed25519Signer, Envelope, ERC8004BindingDocument, ERC8004Envelope, ERC8004Verification, Verification } from "./index.d.ts";
 
 export interface ApostilleClientOptions {
   baseURL: string;
@@ -141,7 +141,7 @@ export declare class ApostilleClient {
   status(): Promise<ApostilleStatus>;
   keys(): Promise<ApostilleKeyDirectory>;
   createChallenge(publicKey: string): Promise<LoginChallenge>;
-  login(signer: Signer): Promise<LoginResult>;
+  login(signer: Ed25519Signer): Promise<LoginResult>;
   clearSession(): void;
   setAccessToken(token: string): void;
   me(): Promise<MeResult>;

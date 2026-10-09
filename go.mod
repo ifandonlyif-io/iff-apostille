@@ -1,10 +1,11 @@
 module github.com/ifandonlyif-io/iff-apostille
 
-go 1.25.0
+go 1.27.0
 
-toolchain go1.26.6
+toolchain go1.27.2
 
 require (
+	filippo.io/edwards25519 v1.2.0
 	github.com/cyberphone/json-canonicalization v0.0.0-20241213102144-19d51d7fe467
 	github.com/ethereum/go-ethereum v1.17.2
 	github.com/stretchr/testify v1.11.1

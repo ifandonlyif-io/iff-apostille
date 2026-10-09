@@ -7,6 +7,16 @@ No multipart upload or private-key parameter is accepted. JSON API responses
 may contain numeric operational metadata such as `expires_in`; signed artifacts
 follow the numeric-free Core profile.
 
+The hosted service accepts Core 0.1 only. Hosted Core 0.2 and 0.3 are pending the
+hosted-service phase; until then clients must not send 0.2 or 0.3 artifacts, and
+the browser console disables hosted actions for ML-DSA-65 keys. Planned for 0.3:
+a login challenge message that starts with `iff-apostille/login/0.3` followed by
+LF (not the 0.1 prefix), at most 4096 bytes, signed with pure hedged ML-DSA-65
+and the empty context, with public-key and signature fields sized for ML-DSA-65
+(2603 and 4412 unpadded base64url characters). This describes planned behavior,
+not a route the service offers today; the exact message fields will be documented
+when it is enabled.
+
 The experimental `zk-budget/0.1` profile runs through the local Go SDK/CLI;
 there is no hosted ZK proving or verification endpoint. Existing submission
 routes may certify a source's signed commitment manifest under their existing

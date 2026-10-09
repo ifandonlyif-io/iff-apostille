@@ -1,4 +1,4 @@
-# Conformance — Core 0.1 alpha
+# Conformance — Core 0.1 alpha, with Core 0.2 and 0.3 in the source tree
 
 Reference implementations: `apostille/` (Go), `web/apostille-core.mjs`
 (WebCrypto), and the JS SDK built from the same browser modules. JSON schema
@@ -69,7 +69,7 @@ accept them, so a degenerate key admits a signature valid for any message; some
 libraries refuse such keys. Trust never comes from an embedded key. Identifier
 syntax and degenerate keys change what a verifier accepts, so they are addressed
 by Core 0.2 rather than by reinterpreting 0.1: see the
-[Core 0.2 specification](spec/core-0.2.md), accepted but not yet implemented.
+[Core 0.2 specification](spec/core-0.2.md) and the section below.
 
 Go previously accepted two consecutive unpaired surrogate escapes and decoded
 them to U+FFFD. The specification already required rejection and the browser
@@ -81,6 +81,45 @@ Offline output leaves organization identity, content truth, current revocation,
 log inclusion and anchoring unproven/not provided. Independent issuer acceptance
 requires caller-supplied issuer AND key pins. Evaluation time is a caller choice,
 not an authenticated timestamp.
+
+## Core 0.2 and Core 0.3
+
+Go and JavaScript reference implementations of both versions are in this source
+tree; neither is in `v0.1.0-alpha.1`. Each version has its own files and the 0.1
+files are unchanged:
+
+| File | Contents |
+| --- | --- |
+| `testdata/apostille/core-0.2.json`, `core-0.3.json` | Known-answer bundles from public test seeds (0.3 signed with the deterministic variant) |
+| `testdata/apostille/core-0.2-cases.json` | 1.2 MB: 240 bundle cases (28 accept, 212 reject), 54 strict-JSON and 353 identifier cases |
+| `testdata/apostille/core-0.3-cases.json` | 7.7 MB: 269 bundle cases (29 accept, 240 reject), 54 strict-JSON and 353 identifier cases |
+| `testdata/apostille/core-0.3-hedged.json` | A hedged known-answer bundle, generated once; the generators only copy it |
+| `testdata/apostille/core-0.3-wycheproof.json` | 13 invalid ML-DSA-65 verify tests from C2SP Wycheproof, with attribution in [NOTICES.md](NOTICES.md) |
+
+The case files use the 0.1 format and rules: only `expect` is normative, and
+every reject case is checked to fail for its stated reason. Go, the browser
+modules and the built SDK each run every case. Regenerate a version's files with
+`UPDATE_APOSTILLE_FIXTURES=1 GOWORK=off go test -run '^TestWriteCore02(Vector|Cases)$' ./apostille`
+(or `Core03`), vector first; never regenerate to make a failing test pass. The
+case files are not shipped in the npm package or the offline verifier archive;
+the SDK ships `vectors-0.2.json`, `vectors-0.3.json` and the schemas.
+
+**Claiming conformance.** An implementation may claim Core 0.2 or Core 0.3
+conformance for the versions it names, for example "verifies Core 0.1 and 0.3",
+once it verifies that version's known-answer bundle and returns the expected
+verdict and result for every case of that version, under the case's options
+(including the accepted-protocol list). 0.3 verification is ML-DSA-65 as
+FIPS 204 defines it: the pure variant with the empty context. Conformance to one
+version says nothing about another. The claim applies to the published cases and
+exact formats; it is not certification, an audit, or a statement about
+post-quantum security beyond the 0.3 specification's
+[security level](spec/core-0.3.md#security-level-receiver-policy-and-versioning).
+
+**Go/JS differential.** The differential suite also runs at 0.2 (2249 items; Go
+and JS each accept 713) and at 0.3 (2270 items; each accepts 721). The 0.2 and
+0.3 divergence tables are empty, so any difference at either version fails the
+suite; the 0.1 tables above are unchanged. Interoperability tests also verify the
+0.2 and 0.3 vectors across languages and issue bundles signed in the browser.
 
 ERC-8004 and experimental ZK have separate profiles/tests; neither changes Core
 0.1. An independent implementation is expected to verify the known-answer vector

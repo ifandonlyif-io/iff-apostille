@@ -116,6 +116,9 @@ func (s *Signer) signERC8004(kind string, value any) (Envelope, error) {
 	if !s.Enabled() {
 		return Envelope{}, errors.New("signing key required")
 	}
+	if s.Algorithm() != Algorithm {
+		return Envelope{}, errors.New("ERC-8004 bindings are signed with an Ed25519 key")
+	}
 	raw, err := Canonical(value)
 	if err != nil {
 		return Envelope{}, err

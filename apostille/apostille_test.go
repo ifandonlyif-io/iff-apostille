@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ const exampleIssuer = "https://issuer.example/apostille"
 const agentID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 const nonceID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 
-func testSigner(t *testing.T, n byte) *Signer {
+func testSigner(t testing.TB, n byte) *Signer {
 	t.Helper()
 	s, e := NewSigner(base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{n}, 32)))
 	if e != nil {
@@ -25,9 +24,35 @@ func testSigner(t *testing.T, n byte) *Signer {
 	}
 	return s
 }
+
+// testSignerFor is the fixture signer n for protocol's algorithm: the same 32
+// repeated bytes as testSigner, as an Ed25519 seed for 0.1 and 0.2 and as an
+// ML-DSA-65 seed for 0.3. Reusing a seed across algorithms is for public test
+// material only. The ML-DSA signer signs deterministically so that published
+// vectors are reproducible; production signers never do.
+func testSignerFor(t testing.TB, protocol string, n byte) *Signer {
+	t.Helper()
+	prof, err := profileFor(protocol)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prof.algorithm != Algorithm03 {
+		return testSigner(t, n)
+	}
+	s, err := NewMLDSASigner(base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{n}, 32)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.deterministic = true
+	return s
+}
 func mustSign(t *testing.T, s *Signer, kind string, p any) Envelope {
 	t.Helper()
-	e, err := s.Sign(kind, p)
+	return mustSignFor(t, Protocol, s, kind, p)
+}
+func mustSignFor(t *testing.T, protocol string, s *Signer, kind string, p any) Envelope {
+	t.Helper()
+	e, err := s.SignFor(protocol, kind, p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,15 +60,28 @@ func mustSign(t *testing.T, s *Signer, kind string, p any) Envelope {
 }
 func fixture(t *testing.T) (Bundle, *Signer, *Signer, *Signer) {
 	t.Helper()
-	admin, agent, issuer := testSigner(t, 1), testSigner(t, 2), testSigner(t, 3)
-	d := Delegation{Header: NewHeader(KindDelegation, KeyIdentity(admin.KeyID()), admin, fixedNow), AgentID: agentID, AgentKeyID: agent.KeyID(), AgentPublicKey: agent.PublicKey(), ServiceAudience: exampleIssuer, NotBefore: fixedNow.Format(TimestampLayout), ExpiresAt: fixedNow.Add(48 * time.Hour).Format(TimestampLayout), Scopes: []string{"sign_origin_statement"}}
-	de := mustSign(t, admin, KindDelegation, d)
+	return fixtureFor(t, Protocol)
+}
+
+// fixtureFor builds the delegated, issued bundle of one protocol version.
+func fixtureFor(t *testing.T, protocol string) (Bundle, *Signer, *Signer, *Signer) {
+	t.Helper()
+	return fixtureSigned(t, protocol, func(n byte) *Signer { return testSignerFor(t, protocol, n) })
+}
+
+// fixtureSigned is fixtureFor with the signers supplied by signer(n), n = 1 for
+// the administrator, 2 for the agent and 3 for the issuer.
+func fixtureSigned(t *testing.T, protocol string, signer func(n byte) *Signer) (Bundle, *Signer, *Signer, *Signer) {
+	t.Helper()
+	admin, agent, issuer := signer(1), signer(2), signer(3)
+	d := Delegation{Header: headerFor(protocol, KindDelegation, KeyIdentity(admin.KeyID()), admin, fixedNow), AgentID: agentID, AgentKeyID: agent.KeyID(), AgentPublicKey: agent.PublicKey(), ServiceAudience: exampleIssuer, NotBefore: fixedNow.Format(TimestampLayout), ExpiresAt: fixedNow.Add(48 * time.Hour).Format(TimestampLayout), Scopes: []string{"sign_origin_statement"}}
+	de := mustSignFor(t, protocol, admin, KindDelegation, d)
 	dh, _ := EnvelopeDigest(de)
-	a := Acceptance{Header: NewHeader(KindAcceptance, KeyIdentity(agent.KeyID()), agent, fixedNow), AgentID: agentID, DelegationSHA256: dh}
-	ae := mustSign(t, agent, KindAcceptance, a)
-	st := Statement{Header: NewHeader(KindStatement, KeyIdentity(agent.KeyID()), agent, fixedNow), AgentID: agentID, DelegationSHA256: dh, ArtifactSHA256: Hash([]byte("hello\n")), ArtifactSize: "6", ArtifactMediaType: "text/plain", Nonce: nonceID}
-	se := mustSign(t, agent, KindStatement, st)
-	bundle, err := Issue(Bundle{Protocol: Protocol, Statement: se, Delegation: &de, Acceptance: &ae}, issuer, exampleIssuer, fixedNow.Add(time.Minute))
+	a := Acceptance{Header: headerFor(protocol, KindAcceptance, KeyIdentity(agent.KeyID()), agent, fixedNow), AgentID: agentID, DelegationSHA256: dh}
+	ae := mustSignFor(t, protocol, agent, KindAcceptance, a)
+	st := Statement{Header: headerFor(protocol, KindStatement, KeyIdentity(agent.KeyID()), agent, fixedNow), AgentID: agentID, DelegationSHA256: dh, ArtifactSHA256: Hash([]byte("hello\n")), ArtifactSize: "6", ArtifactMediaType: "text/plain", Nonce: nonceID}
+	se := mustSignFor(t, protocol, agent, KindStatement, st)
+	bundle, err := Issue(Bundle{Protocol: protocol, Statement: se, Delegation: &de, Acceptance: &ae}, issuer, exampleIssuer, fixedNow.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +228,7 @@ func TestStrictJSONAndKeyMaterial(t *testing.T) {
 	_ = DecodePayload(b.Statement, KindStatement, &st)
 	raw, _ := Canonical(st)
 	raw = bytes.Replace(raw, []byte(`"delegation_sha256":"`+st.DelegationSHA256+`",`), nil, 1)
-	if _, err := validatePayload(KindStatement, raw); err == nil {
+	if _, err := validatePayload(profile01, KindStatement, raw); err == nil {
 		t.Fatal("missing required field accepted")
 	}
 }
@@ -224,11 +262,17 @@ func TestLoginPurposeSeparation(t *testing.T) {
 	}
 }
 func TestWriteInteroperabilityFixture(t *testing.T) {
-	b, admin, agent, issuer := fixture(t)
+	writeInteropFixture(t, gen01)
+}
+
+// writeInteropFixture generates g's known-answer vector, compares it with the
+// file on disk and, only when UPDATE_APOSTILLE_FIXTURES=1, rewrites it.
+func writeInteropFixture(t *testing.T, g caseGen) {
+	b, admin, agent, issuer := g.fixture(t)
 	var c Certificate
 	_ = DecodePayload(*b.Certificate, KindCertificate, &c)
 	c.CertificateID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
-	ce := mustSign(t, issuer, KindCertificate, c)
+	ce := g.mustSign(t, issuer, KindCertificate, c)
 	b.Certificate = &ce
 	fixture := struct {
 		Protocol       string `json:"protocol"`
@@ -239,13 +283,13 @@ func TestWriteInteroperabilityFixture(t *testing.T) {
 		AgentPublicKey string `json:"agent_public_key"`
 		Artifact       string `json:"artifact"`
 		Bundle         Bundle `json:"bundle"`
-	}{Protocol, fixedNow.Add(time.Hour).Format(TimestampLayout), exampleIssuer, issuer.KeyID(), admin.PublicKey(), agent.PublicKey(), "hello\n", b}
+	}{g.protocol, fixedNow.Add(time.Hour).Format(TimestampLayout), exampleIssuer, issuer.KeyID(), admin.PublicKey(), agent.PublicKey(), "hello\n", b}
 	raw, e := json.MarshalIndent(fixture, "", "  ")
 	if e != nil {
 		t.Fatal(e)
 	}
 	raw = append(raw, '\n')
-	path := filepath.Join("..", "testdata", "apostille", "core-0.1.json")
+	path := g.vectorPath()
 	if os.Getenv("UPDATE_APOSTILLE_FIXTURES") == "1" {
 		if err := os.WriteFile(path, raw, 0644); err != nil {
 			t.Fatal(err)
@@ -253,6 +297,6 @@ func TestWriteInteroperabilityFixture(t *testing.T) {
 	}
 	existing, err := os.ReadFile(path)
 	if err != nil || !bytes.Equal(existing, raw) {
-		t.Fatal("fixture mismatch; run UPDATE_APOSTILLE_FIXTURES=1 go test ./apostille to regenerate")
+		t.Fatalf("fixture mismatch; run UPDATE_APOSTILLE_FIXTURES=1 GOWORK=off go test -run '^%s$' -count=1 ./apostille to regenerate", t.Name())
 	}
 }

@@ -27,7 +27,11 @@
     "spec/core-0.1.md",
     "spec/erc8004-binding-0.1.md",
     "spec/schema.json",
-    "spec/vectors.json"
+    "spec/schema-0.2.json",
+    "spec/schema-0.3.json",
+    "spec/vectors.json",
+    "spec/vectors-0.2.json",
+    "spec/vectors-0.3.json"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",

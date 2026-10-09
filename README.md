@@ -16,8 +16,8 @@ SDK package `0.1.0-alpha.1` are different version namespaces. The Go root module
 `v0.1.0-alpha.1`, and the CLI and ZK modules carry the tags
 `cmd/apostille/v0.1.0-alpha.1` and `apostille/zkbudget/v0.1.0-alpha.1`. No npm
 package and no CLI binaries are published.
-Core 0.2 is an accepted specification with no implementation or vectors yet;
-see the [roadmap](#roadmap).
+Core 0.2 and Core 0.3 are implemented in this source tree but are not part of
+`v0.1.0-alpha.1`; see the [roadmap](#roadmap).
 
 This release includes 215 shared conformance cases, Go/JavaScript differential
 tests, fuzz tests and a fix for unpaired Unicode surrogate handling. The hosted
@@ -52,6 +52,8 @@ IFF service consumes the pinned public Go release.
 | Component | Source | What it provides |
 | --- | --- | --- |
 | Core 0.1 | [spec](docs/apostille/spec/core-0.1.md), [schema](web/apostille-0.1.schema.json), [vectors](testdata/apostille/core-0.1.json), [cases](testdata/apostille/core-0.1-cases.json) | Exact bytes and positive/negative verification cases |
+| Core 0.2 | [spec](docs/apostille/spec/core-0.2.md), [schema](web/apostille-0.2.schema.json), [vectors](testdata/apostille/core-0.2.json), [cases](testdata/apostille/core-0.2-cases.json) | Exact identifier grammar and strict Ed25519; unreleased |
+| Core 0.3 | [spec](docs/apostille/spec/core-0.3.md), [schema](web/apostille-0.3.schema.json), [vectors](testdata/apostille/core-0.3.json), [cases](testdata/apostille/core-0.3-cases.json) | ML-DSA-65 (FIPS 204) signatures; unreleased |
 | Go | [core](apostille/), [API client](apostille/client/) | Offline signing/verification; explicitly invoked hosted calls |
 | JavaScript / TypeScript | [SDK](sdk/apostille-js/) | Offline default import and separate `/client` entry |
 | Local CLI | [commands](docs/apostille/CLI.md) | Key generation, signing, local issuance and verification |
@@ -61,7 +63,7 @@ IFF service consumes the pinned public Go release.
 
 ## Try the source
 
-Prerequisites: Go toolchain `go1.26.6` (module language minima are in `go.mod`),
+Prerequisites: Go toolchain `go1.27.2` (module language minima are in `go.mod`),
 Node.js 22+, npm, Python 3 and make. The initial build downloads public
 dependencies; signing and offline verification do not need the network.
 
@@ -74,7 +76,7 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory dist/verifier
 
 Open `http://127.0.0.1:8080/`. Browser ES modules need an HTTP origin, so `file://`
 is unsupported. The page uses only local assets and `connect-src 'none'`.
-Import a bundle and independently obtained issuer/key pins. The browser does not
+Import a bundle (Core 0.1, 0.2 or 0.3) and independently obtained issuer/key pins. The browser does not
 generate or verify ZK proofs; use the separate CLI/Go module.
 
 Pack the JS SDK without publishing:
@@ -96,11 +98,18 @@ them at the next root tag (see RELEASE.md for the local development workaround).
 
 Core 0.2 ([specification](docs/apostille/spec/core-0.2.md),
 [schema](web/apostille-0.2.schema.json)) adds an exact identifier grammar, strict
-Ed25519 verification and a versioned namespace. It is accepted but has no
-reference implementation or conformance vectors; nothing may claim 0.2
-conformance yet. The [implementation plan](docs/apostille/proposals/core-0.2-implementation-plan.md)
-tracks its status. An npm release of the JS SDK and prebuilt CLI binaries are
-also planned; neither is part of `v0.1.0-alpha.1`.
+Ed25519 verification and a versioned namespace. Core 0.3
+([specification](docs/apostille/spec/core-0.3.md),
+[schema](web/apostille-0.3.schema.json)) keeps that grammar and signs with
+ML-DSA-65 (FIPS 204). Go and JavaScript reference implementations, vectors and
+conformance cases are in this source tree; the browser verifier checks all three
+versions. The CLI, the hosted service and the hosted API client do not support
+0.2 or 0.3 yet. Core 0.1 remains the default signing version until a switch is
+announced; 0.2 and 0.3 are explicit options. The
+[0.2](docs/apostille/proposals/core-0.2-implementation-plan.md) and
+[0.3](docs/apostille/proposals/core-0.3-implementation-plan.md) implementation
+plans track their status. An npm release of the JS SDK and prebuilt CLI binaries
+are also planned; neither is part of `v0.1.0-alpha.1`.
 
 ## What verification means
 
@@ -109,6 +118,10 @@ requires your own exact issuer/key pin. It does not establish content truth,
 complete bot history, organization identity, current non-revocation, payment
 safety or legal effect. This project is not a Hague Apostille or government
 certification. Hashes can still identify/link records; hashing is not anonymization.
+Core 0.3 makes the signatures post-quantum; it does not make the system
+quantum-safe. SHA-256 digests still bound attacks that need a collision at NIST
+category 2, and trust, privacy and everything else are unchanged (see the
+[specification's security level](docs/apostille/spec/core-0.3.md#security-level-receiver-policy-and-versioning)).
 
 ERC-8004 bindings report `issuer_checked` historical observations; current
 ownership remains unknown. ZK proves a predicate about the committed input vector,

@@ -3,6 +3,7 @@ package apostille
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -28,7 +29,15 @@ var (
 	decimalPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,18})$`)
 )
 
-type Signer struct{ key ed25519.PrivateKey }
+// Signer holds one private key of one signature algorithm: key for Ed25519
+// (Core 0.1 and 0.2), ml for ML-DSA-65 (Core 0.3). A zero Signer is disabled.
+type Signer struct {
+	key ed25519.PrivateKey
+	ml  *mldsa.PrivateKey
+	// deterministic selects FIPS 204's deterministic signing variant, which
+	// only published test vectors may use. No non-test code sets it.
+	deterministic bool
+}
 
 func NewSigner(encoded string) (*Signer, error) {
 	if encoded == "" {
@@ -65,18 +74,60 @@ func GenerateKey() (seed string, publicKey string, err error) {
 	}
 	return rawURL.EncodeToString(key.Seed()), rawURL.EncodeToString(pub), nil
 }
-func (s *Signer) Enabled() bool { return s != nil && len(s.key) == ed25519.PrivateKeySize }
+func (s *Signer) Enabled() bool { return s.Algorithm() != "" }
+
+// Algorithm is the signature.algorithm value of the signer's key: Algorithm
+// ("Ed25519") for NewSigner, Algorithm03 ("ML-DSA-65") for NewMLDSASigner, and
+// "" for a disabled signer.
+func (s *Signer) Algorithm() string {
+	switch {
+	case s == nil:
+		return ""
+	case s.ml != nil:
+		return Algorithm03
+	case len(s.key) == ed25519.PrivateKeySize:
+		return Algorithm
+	}
+	return ""
+}
+
+// publicKeyBytes is the raw public key, or nil for a disabled signer.
+func (s *Signer) publicKeyBytes() []byte {
+	switch s.Algorithm() {
+	case Algorithm:
+		return s.key[32:]
+	case Algorithm03:
+		return s.ml.PublicKey().Bytes()
+	}
+	return nil
+}
 func (s *Signer) PublicKey() string {
 	if !s.Enabled() {
 		return ""
 	}
-	return rawURL.EncodeToString(s.key[32:])
+	return rawURL.EncodeToString(s.publicKeyBytes())
 }
 func (s *Signer) KeyID() string {
 	if !s.Enabled() {
 		return ""
 	}
-	return Fingerprint(s.key[32:])
+	return Fingerprint(s.publicKeyBytes())
+}
+
+// signMessage signs message with the signer's algorithm. ML-DSA-65 signing is
+// the hedged, pure variant with the empty context unless a test has set
+// deterministic.
+func (s *Signer) signMessage(message []byte) ([]byte, error) {
+	switch s.Algorithm() {
+	case Algorithm:
+		return ed25519.Sign(s.key, message), nil
+	case Algorithm03:
+		if s.deterministic {
+			return s.ml.SignDeterministic(message, &mldsa.Options{})
+		}
+		return s.ml.Sign(nil, message, &mldsa.Options{})
+	}
+	return nil, errors.New("signing key required")
 }
 func Fingerprint(key []byte) string   { return "sha256:" + Hash(key) }
 func KeyIdentity(keyID string) string { return "urn:apostille:key:" + keyID }
@@ -244,32 +295,23 @@ func EnvelopeDigest(envelope Envelope) (string, error) {
 	return Hash(raw), nil
 }
 func signingInput(kind string, payload []byte) []byte {
-	hash := sha256.Sum256(payload)
-	return append([]byte("iff-apostille/"+kind+"/0.1\n"), hash[:]...)
+	return profile01.signingInput(kind, payload)
 }
+
+// Sign signs value as a Core 0.1 artifact. SignFor takes the version explicitly.
 func (s *Signer) Sign(kind string, value any) (Envelope, error) {
-	if !s.Enabled() {
-		return Envelope{}, errors.New("issuer signing is disabled")
-	}
-	raw, err := Canonical(value)
-	if err != nil {
-		return Envelope{}, err
-	}
-	header, err := validatePayload(kind, raw)
-	if err != nil {
-		return Envelope{}, err
-	}
-	if header.IssuerKeyID != s.KeyID() {
-		return Envelope{}, errors.New("signed key ID does not match signer")
-	}
-	return Envelope{Protocol: Protocol, Kind: kind, Payload: rawURL.EncodeToString(raw), PayloadSHA256: Hash(raw), Signature: Signature{Algorithm: Algorithm, KeyID: s.KeyID(), PublicKey: s.PublicKey(), Value: rawURL.EncodeToString(ed25519.Sign(s.key, signingInput(kind, raw)))}}, nil
+	return s.SignFor(Protocol, kind, value)
 }
 func VerifyEnvelope(envelope Envelope) (VerifiedEnvelope, error) {
-	if len(envelope.Payload) > MaxInputBytes || len(envelope.Signature.PublicKey) > 64 || len(envelope.Signature.Value) > 128 || len(envelope.Kind) > 64 {
+	if len(envelope.Payload) > MaxInputBytes || len(envelope.Kind) > 64 {
 		return VerifiedEnvelope{}, errors.New("envelope fields exceed size limit")
 	}
-	if envelope.Protocol != Protocol || envelope.Signature.Algorithm != Algorithm {
+	prof, err := profileFor(envelope.Protocol)
+	if err != nil || envelope.Signature.Algorithm != prof.algorithm {
 		return VerifiedEnvelope{}, errors.New("unsupported envelope protocol or algorithm")
+	}
+	if len(envelope.Signature.PublicKey) > prof.fieldLimit(prof.publicKeySize) || len(envelope.Signature.Value) > prof.fieldLimit(prof.signatureSize) {
+		return VerifiedEnvelope{}, errors.New("envelope fields exceed size limit")
 	}
 	raw, err := rawURL.DecodeString(envelope.Payload)
 	if err != nil || len(raw) == 0 || len(raw) > MaxInputBytes/2 || rawURL.EncodeToString(raw) != envelope.Payload {
@@ -285,15 +327,21 @@ func VerifyEnvelope(envelope Envelope) (VerifiedEnvelope, error) {
 	if err != nil || !bytes.Equal(canonical, raw) {
 		return VerifiedEnvelope{}, errors.New("payload is not canonical JSON")
 	}
-	pub, err := ParsePublicKey(envelope.Signature.PublicKey)
+	pub, err := prof.decodePublicKey(envelope.Signature.PublicKey)
 	if err != nil || Fingerprint(pub) != envelope.Signature.KeyID {
 		return VerifiedEnvelope{}, errors.New("key fingerprint mismatch")
 	}
-	signature, err := rawURL.DecodeString(envelope.Signature.Value)
-	if err != nil || len(signature) != ed25519.SignatureSize || rawURL.EncodeToString(signature) != envelope.Signature.Value || !ed25519.Verify(pub, signingInput(envelope.Kind, raw), signature) {
-		return VerifiedEnvelope{}, errors.New("invalid source signature")
+	if err := prof.checkKey(pub); err != nil {
+		return VerifiedEnvelope{}, err
 	}
-	header, err := validatePayload(envelope.Kind, raw)
+	signature, err := prof.decodeSignature(envelope.Signature.Value)
+	if err != nil {
+		return VerifiedEnvelope{}, err
+	}
+	if err := prof.verify(pub, prof.signingInput(envelope.Kind, raw), signature); err != nil {
+		return VerifiedEnvelope{}, err
+	}
+	header, err := validatePayload(prof, envelope.Kind, raw)
 	if err != nil {
 		return VerifiedEnvelope{}, err
 	}
@@ -317,6 +365,9 @@ func DecodePayload(envelope Envelope, kind string, dst any) error {
 func (s *Signer) SignChallenge(message string) (string, error) {
 	if !s.Enabled() {
 		return "", errors.New("signing key required")
+	}
+	if s.Algorithm() != Algorithm {
+		return "", errors.New("the 0.1 login challenge needs an Ed25519 key")
 	}
 	if !strings.HasPrefix(message, "iff-apostille/login/0.1\n") || len(message) > 4096 {
 		return "", errors.New("invalid login challenge")

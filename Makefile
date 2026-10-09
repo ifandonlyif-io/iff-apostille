@@ -16,7 +16,7 @@ core:
 	GOWORK=off go test -race ./...
 
 web:
-	node --test web/apostille-core.test.mjs web/apostille-cases.test.mjs web/apostille-erc8004.test.mjs web/apostille-ui.test.mjs
+	node --test web/apostille-core.test.mjs web/apostille-versions.test.mjs web/apostille-cases.test.mjs web/apostille-erc8004.test.mjs web/apostille-ui.test.mjs
 
 sdk:
 	npm --prefix sdk/apostille-js ci --ignore-scripts --no-audit --no-fund
@@ -41,12 +41,12 @@ verifier:
 
 security:
 	@for module in . apostille/zkbudget cmd/apostille; do \
-		GOWORK=off go -C "$$module" run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./... || exit; \
+		GOWORK=off go -C "$$module" run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./... || exit; \
 	done
 
 # Go accepts one fuzz target per invocation. Seeds already run under `core`;
 # this target spends FUZZTIME mutating each one and is not part of `check`.
 fuzz:
-	@for target in FuzzStrictJSON FuzzVerify FuzzSignedPayload; do \
+	@for target in FuzzStrictJSON FuzzVerify FuzzSignedPayload FuzzValidIssuer02; do \
 		GOWORK=off go test -run '^$$' -fuzz "^$$target\$$" -fuzztime $(FUZZTIME) ./apostille || exit; \
 	done

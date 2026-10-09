@@ -19,9 +19,37 @@ for key, value in values.items():
 if re.search(r"\{\{[^}]+\}\}", page):
     raise RuntimeError("unknown HTML placeholder: update verifier packaging")
 assets = {"index.html": page.encode()}
+# Vendored Noble files (scripts/vendor-noble.mjs, docs/apostille/NOTICES.md): the exact import closure of
+# the Ed25519 and ML-DSA entry points, so the page loads them under script-src 'self' with no import map.
+VENDORED = (
+    "vendor/noble/curves/abstract/curve.js",
+    "vendor/noble/curves/abstract/edwards.js",
+    "vendor/noble/curves/abstract/fft.js",
+    "vendor/noble/curves/abstract/frost.js",
+    "vendor/noble/curves/abstract/hash-to-curve.js",
+    "vendor/noble/curves/abstract/modular.js",
+    "vendor/noble/curves/abstract/montgomery.js",
+    "vendor/noble/curves/abstract/oprf.js",
+    "vendor/noble/curves/ed25519.js",
+    "vendor/noble/curves/utils.js",
+    "vendor/noble/hashes/_md.js",
+    "vendor/noble/hashes/_u64.js",
+    "vendor/noble/hashes/sha2.js",
+    "vendor/noble/hashes/sha3.js",
+    "vendor/noble/hashes/utils.js",
+    "vendor/noble/post-quantum/_crystals.js",
+    "vendor/noble/post-quantum/ml-dsa.js",
+    "vendor/noble/post-quantum/utils.js",
+    "vendor/noble/package.json",
+)
 for name in ("apostille.css", "apostille-page.mjs", "apostille-core.mjs", "apostille-json.mjs",
-             "apostille-http.mjs", "apostille-erc8004.mjs", "apostille-messages.mjs", "apostille-0.1.schema.json"):
+             "apostille-http.mjs", "apostille-erc8004.mjs", "apostille-messages.mjs",
+             "apostille-profile.mjs", "apostille-identifier.mjs", "apostille-ed25519.mjs", "apostille-mldsa.mjs",
+             "apostille-0.1.schema.json", "apostille-0.2.schema.json", "apostille-0.3.schema.json", *VENDORED):
     assets[name] = (root / "web" / name).read_bytes()
+for name, source in {"LICENSE-noble-curves": "noble-curves-LICENSE", "LICENSE-noble-hashes": "noble-hashes-LICENSE",
+                     "LICENSE-noble-post-quantum": "noble-post-quantum-LICENSE"}.items():
+    assets[name] = (root / "docs/apostille/notices" / source).read_bytes()
 for name, source in {"LICENSE": "LICENSE", "core-0.1.md": "docs/apostille/spec/core-0.1.md",
                      "erc8004-binding-0.1.md": "docs/apostille/spec/erc8004-binding-0.1.md",
                      "test-vectors.json": "testdata/apostille/core-0.1.json"}.items():
@@ -40,6 +68,7 @@ assets["SHA256SUMS.json"] = (json.dumps(checksums, indent=2) + "\n").encode()
 archive = root / "dist/apostille-offline-verifier-0.1.zip"
 with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as z:
     for name, data in sorted(assets.items()):
+        (out / name).parent.mkdir(parents=True, exist_ok=True)
         (out / name).write_bytes(data)
         info = zipfile.ZipInfo(name, date_time=(2026, 9, 14, 0, 0, 0))
         info.compress_type = zipfile.ZIP_DEFLATED

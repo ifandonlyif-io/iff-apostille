@@ -1,6 +1,7 @@
 # Apostille 0.1 local CLI
 
 The `apostille` command creates and verifies issuer-neutral Apostille 0.1 artifacts using local files. It does not contact IFF, upload the original artifact, or make any network request.
+The released CLI handles Core 0.1 only; `--protocol 0.2`, `--protocol 0.3` and ML-DSA-65 key generation arrive with the next CLI release.
 
 Install the released module, or build it from the repository root:
 

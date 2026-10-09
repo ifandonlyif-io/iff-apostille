@@ -8,7 +8,9 @@ import (
 	"time"
 )
 
-func validatePayload(kind string, raw []byte) (Header, error) {
+// validatePayload decodes and validates one signed payload under the rules of
+// prof, including that the payload names prof's protocol.
+func validatePayload(prof *profile, kind string, raw []byte) (Header, error) {
 	var header Header
 	var problem error
 	var typed any
@@ -33,9 +35,11 @@ func validatePayload(kind string, raw []byte) (Header, error) {
 		}
 		header = p.Header
 		typed = p
-		pub, err := ParsePublicKey(p.AgentPublicKey)
-		if err != nil || Fingerprint(pub) != p.AgentKeyID || !ValidID(p.AgentID) || !ValidIssuer(p.ServiceAudience) || len(p.Scopes) != 1 || p.Scopes[0] != "sign_origin_statement" {
+		pub, err := prof.decodePublicKey(p.AgentPublicKey)
+		if err != nil || Fingerprint(pub) != p.AgentKeyID || !ValidID(p.AgentID) || !prof.validIssuer(p.ServiceAudience) || len(p.Scopes) != 1 || p.Scopes[0] != "sign_origin_statement" {
 			problem = errors.New("invalid agent delegation")
+		} else if err := prof.checkKey(pub); err != nil {
+			problem = fmt.Errorf("invalid agent delegation: %w", err)
 		}
 		if err := interval(p.NotBefore, p.ExpiresAt); err != nil {
 			problem = err
@@ -60,7 +64,7 @@ func validatePayload(kind string, raw []byte) (Header, error) {
 		}
 		header = p.Header
 		typed = p
-		if !digestPattern.MatchString(p.StatementSHA256) || !digestPattern.MatchString(p.DelegationSHA256) || !ValidIssuer(p.ServiceAudience) || (p.Visibility != "private" && p.Visibility != "public") || p.Purpose != "issue_origin_certificate" || !ValidID(p.Nonce) || header.Issuer != KeyIdentity(header.IssuerKeyID) {
+		if !digestPattern.MatchString(p.StatementSHA256) || !digestPattern.MatchString(p.DelegationSHA256) || !prof.validIssuer(p.ServiceAudience) || (p.Visibility != "private" && p.Visibility != "public") || p.Purpose != "issue_origin_certificate" || !ValidID(p.Nonce) || header.Issuer != KeyIdentity(header.IssuerKeyID) {
 			problem = errors.New("invalid publication grant")
 		}
 		if err := interval(p.IssuedAt, p.ExpiresAt); err != nil {
@@ -88,7 +92,7 @@ func validatePayload(kind string, raw []byte) (Header, error) {
 	default:
 		return header, errors.New("unsupported artifact kind")
 	}
-	if header.Protocol != Protocol || header.Kind != kind || !ValidIssuer(header.Issuer) || !validKeyID(header.IssuerKeyID) {
+	if header.Protocol != prof.protocol || header.Kind != kind || !prof.validIssuer(header.Issuer) || !validKeyID(header.IssuerKeyID) {
 		return header, errors.New("invalid signed protocol header")
 	}
 	if _, err := Timestamp(header.IssuedAt); err != nil {
@@ -129,6 +133,9 @@ func VerifyRegistration(reg AgentRegistration, audience string, now time.Time) (
 func (v *Verifier) VerifyRegistration(reg AgentRegistration, audience string, now time.Time) (Delegation, error) {
 	var d Delegation
 	var a Acceptance
+	if reg.Delegation.Protocol != reg.Acceptance.Protocol {
+		return d, errors.New("delegation and acceptance carry different protocol versions")
+	}
 	if err := v.DecodePayload(reg.Delegation, KindDelegation, &d); err != nil {
 		return d, err
 	}
@@ -156,10 +163,25 @@ func (v *Verifier) VerifyRegistration(reg AgentRegistration, audience string, no
 	}
 	return d, nil
 }
+
+// checkBundleVersions selects the rule set from bundle.protocol and applies the
+// no-mixing rule: every present envelope names the bundle's version. It runs
+// before any signature is checked.
+func checkBundleVersions(bundle Bundle) error {
+	if _, err := profileFor(bundle.Protocol); err != nil {
+		return errors.New("unsupported bundle protocol")
+	}
+	for _, envelope := range []*Envelope{&bundle.Statement, bundle.Delegation, bundle.Acceptance, bundle.Certificate} {
+		if envelope != nil && envelope.Protocol != bundle.Protocol {
+			return errors.New("bundle mixes protocol versions")
+		}
+	}
+	return nil
+}
 func (v *Verifier) verifySource(bundle Bundle) (Statement, *Delegation, error) {
 	var s Statement
-	if bundle.Protocol != Protocol {
-		return s, nil, errors.New("unsupported bundle protocol")
+	if err := checkBundleVersions(bundle); err != nil {
+		return s, nil, err
 	}
 	if err := v.DecodePayload(bundle.Statement, KindStatement, &s); err != nil {
 		return s, nil, err
@@ -195,6 +217,9 @@ func ValidateGrant(grant Envelope, statement Envelope, delegation Envelope, admi
 
 func (v *Verifier) ValidateGrant(grant Envelope, statement Envelope, delegation Envelope, adminKeyID, audience string, now time.Time) (PublicationGrant, error) {
 	var g PublicationGrant
+	if grant.Protocol != statement.Protocol || grant.Protocol != delegation.Protocol {
+		return g, errors.New("grant, statement and delegation carry different protocol versions")
+	}
 	if err := v.DecodePayload(grant, KindGrant, &g); err != nil {
 		return g, err
 	}
@@ -264,8 +289,8 @@ func (v *Verifier) Issue(bundle Bundle, signer *Signer, issuer string, now time.
 	if err != nil {
 		return Bundle{}, err
 	}
-	cert := Certificate{Header: NewHeader(KindCertificate, issuer, signer, now), CertificateID: id, StatementSHA256: sh, DelegationSHA256: s.DelegationSHA256, SourceKeyID: s.IssuerKeyID, ExpiresAt: expiry.Format(TimestampLayout), SignatureCheck: "valid", AgentBinding: binding, OrganizationBinding: "unproven", ContentTruth: "not_established"}
-	signed, err := signer.Sign(KindCertificate, cert)
+	cert := Certificate{Header: headerFor(bundle.Protocol, KindCertificate, issuer, signer, now), CertificateID: id, StatementSHA256: sh, DelegationSHA256: s.DelegationSHA256, SourceKeyID: s.IssuerKeyID, ExpiresAt: expiry.Format(TimestampLayout), SignatureCheck: "valid", AgentBinding: binding, OrganizationBinding: "unproven", ContentTruth: "not_established"}
+	signed, err := signer.SignFor(bundle.Protocol, KindCertificate, cert)
 	if err != nil {
 		return Bundle{}, err
 	}
@@ -298,11 +323,14 @@ func VerifyBundle(bundle Bundle, opts VerifyOptions) (Verification, error) {
 }
 
 func (v *Verifier) VerifyBundle(bundle Bundle, opts VerifyOptions) (Verification, error) {
+	if !acceptsProtocol(opts.AcceptedProtocols, bundle.Protocol) {
+		return Verification{}, errors.New("bundle protocol is not accepted by the receiver's policy")
+	}
 	s, d, err := v.verifySource(bundle)
 	if err != nil {
 		return Verification{}, err
 	}
-	out := Verification{Protocol: Protocol, ArtifactIntegrity: "valid", IssuerTrust: "unknown", CertificateScope: "producer_only", AgentBinding: "not_provided", OrganizationBinding: "unproven", AuthorizationPolicy: "unknown", Freshness: "unknown", TimeBasis: "producer_claimed", ContentTruth: "not_established", ProviderEvidence: "not_provided", LogInclusion: "not_registered", Anchor: "not_requested", Issuer: s.Issuer, IssuerKeyID: s.IssuerKeyID, Statement: s}
+	out := Verification{Protocol: bundle.Protocol, ArtifactIntegrity: "valid", IssuerTrust: "unknown", CertificateScope: "producer_only", AgentBinding: "not_provided", OrganizationBinding: "unproven", AuthorizationPolicy: "unknown", Freshness: "unknown", TimeBasis: "producer_claimed", ContentTruth: "not_established", ProviderEvidence: "not_provided", LogInclusion: "not_registered", Anchor: "not_requested", Issuer: s.Issuer, IssuerKeyID: s.IssuerKeyID, Statement: s}
 	if d != nil {
 		out.AgentBinding = "admin_key_delegation"
 	}
