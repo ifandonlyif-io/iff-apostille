@@ -7,16 +7,16 @@ No multipart upload or private-key parameter is accepted. JSON API responses
 may contain numeric operational metadata such as `expires_in`; signed artifacts
 follow the numeric-free Core profile.
 
-## Core versions (Core 0.3: deployment pending)
+## Core versions
 
-The deployed hosted service accepts Core 0.1 only. Hosted Core 0.3 (ML-DSA-65) is
-specified below and implemented by the Go and JavaScript clients, but the server
-is not yet deployed, so treat it as deployment pending. A client release that
-supports this contract does not mean the hosted service accepts Core 0.3; check
-`GET /status` `protocols`. The hosted browser console keeps hosted actions
-disabled for ML-DSA-65 keys until the server is deployed. Core 0.2 is never issued
-by the hosted service. Every existing response keeps its current fields and
-meaning, so released 0.1 clients keep working; the 0.3 behavior is additive.
+As of 2026-10-10 (Asia/Taipei), the hosted service accepts Core 0.1 and Core 0.3
+(ML-DSA-65). The Go and JavaScript clients implement the contract below; Go hosted
+Core 0.3 client support is released in root module `v0.3.1-alpha.1`. Check the
+target service's `GET /status` `protocols` for runtime availability. See the
+[operator-published issuer pins and deployment verification](HOSTED_KEYS.md)
+for the recorded API/client checks and receiver trust policy. Core 0.2 is never
+issued by the hosted service. Every existing response keeps its current fields
+and meaning, so released 0.1 clients keep working; the 0.3 behavior is additive.
 
 - `GET /status` keeps its fields (`protocol` stays the Core 0.1 identifier) and
   adds `protocols`, the full identifiers the service accepts (`[0.1, 0.3]` when

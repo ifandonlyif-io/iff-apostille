@@ -5,8 +5,10 @@ adds hosted-API client support for Core 0.3 (`KeysFor`/`keysFor`, ML-DSA-65
 login and a version check on submission responses) and `ParsePublicKeyFor`, to
 the contract in [API.md](API.md) "Core versions". No Core rule, vector or
 vendored file changes. `apostille/zkbudget` and `cmd/apostille` stay at
-`v0.3.0-alpha.1`, because neither uses the client. Hosted Core 0.3 needs the
-matching server deployment.
+`v0.3.0-alpha.1`, because neither uses the client. The matching hosted Core 0.3
+server was deployed on 2026-10-10 (Asia/Taipei), alongside continued Core 0.1
+support. See the [operator-published issuer pins and API/client deployment
+verification](HOSTED_KEYS.md); browser acceptance is outside that record.
 
 `v0.3.0-alpha.1` is the second alpha release: root Go module `v0.3.0-alpha.1`
 (packages `apostille`, `apostille/client`, `util`), `apostille/zkbudget/v0.3.0-alpha.1`
@@ -23,9 +25,11 @@ Core 0.3 (pure ML-DSA-65, FIPS 204) in the Go root module, the browser
 verifier/console and the JS SDK source; the CLI supports `--protocol 0.1|0.2|0.3`,
 `keygen --algorithm ml-dsa-65` and `verify --accept-protocol`. Core 0.1 remains
 the default signing version until a switch is announced. Go 1.27 is required for
-module consumers. Not included: no npm package, no prebuilt CLI binaries, and the
-hosted service and hosted API client do not support Core 0.2 or 0.3 yet; the
-ERC-8004 binding and ZK budget profiles cover Core 0.1 only.
+module consumers. That release included no npm package or prebuilt CLI binaries.
+At the time of `v0.3.0-alpha.1`, the hosted service and hosted API client supported
+Core 0.1 only; Core 0.3 client support and server deployment followed as described
+above. Hosted issuance still excludes Core 0.2, and the ERC-8004 binding and ZK
+budget profiles cover Core 0.1 only.
 
 `v0.1.0-alpha.1` was the first release: root Go module `v0.1.0-alpha.1`
 (packages `apostille`, `apostille/client`, `util`), `apostille/zkbudget/v0.1.0-alpha.1`

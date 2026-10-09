@@ -182,9 +182,10 @@ Signing defaults to Core 0.1. The [0.2](spec/core-0.2.md) and
   `iff-apostille/login/0.3` message, reconstructed and checked byte for byte
   before signing) and answers with a 4412-character signature, while an Ed25519
   signer stays on the 0.1 message; `createChallenge` / `CreateChallenge` accepts
-  either key type and rejects a message whose prefix does not match the key. The
-  browser console still disables hosted actions for ML-DSA-65 keys, and hosted
-  Core 0.3 is deployment pending on the server side (see [API.md](API.md)).
+  either key type and rejects a message whose prefix does not match the key.
+  Hosted Core 0.3 was deployed on 2026-10-10 (Asia/Taipei); the Go client support
+  is released in root module `v0.3.1-alpha.1`. See the [API contract](API.md) and
+  [deployment verification record](HOSTED_KEYS.md).
 - **Version-specific key directories.** `keysFor(protocol)` (Go
   `KeysFor(ctx, protocol)`) fetches `/keys?protocol=<identifier>`; for Core 0.1 it
   is `keys()`. It requires the directory to echo the requested protocol and the
@@ -197,16 +198,20 @@ Signing defaults to Core 0.1. The [0.2](spec/core-0.2.md) and
   statement is refused before anything is sent, and a submission response is
   accepted only if its bundle carries the submitted statement's version. Signing
   in with an ML-DSA-65 key starts its own workspace; an Ed25519 workspace is not
-  migrated (see [API.md](API.md)). This client support does not mean the hosted
-  service accepts Core 0.3: check `status().protocols`. Pin the hosted ML-DSA-65
-  issuer key ID in `TrustedKeyIDs` / `trustedKeyIDs` to get
-  `issuer_trust: accepted_by_policy` for a 0.3 certificate.
+  migrated (see [API.md](API.md)). Check the target service's
+  `status().protocols` for runtime availability. Independently select the hosted
+  ML-DSA-65 issuer key ID for `TrustedKeyIDs` / `trustedKeyIDs` to get
+  `issuer_trust: accepted_by_policy` for a 0.3 certificate; the
+  [operator-published pins](HOSTED_KEYS.md) require a separate receiver trust
+  decision.
 - **Browser signing disclosure.** Browser ML-DSA-65 uses the vendored `@noble/post-quantum`, which states that it is not independently audited and does not claim constant-time signing. The browser console and
   key generation show this wherever an ML-DSA-65 key is generated or signs. For
   administrator keys the [CLI](CLI.md), which uses the Go standard library
-  `crypto/mldsa`, is the recommended path once it supports 0.3. Hosted sign-in,
-  registration and submission stay disabled for ML-DSA-65 keys; local signing and
-  offline verification work.
+  `crypto/mldsa`, supports 0.3 in `cmd/apostille/v0.3.0-alpha.1` and is the
+  recommended path. This repository's console source still disables hosted
+  sign-in, registration and submission for ML-DSA-65 keys; local signing and
+  offline verification work. The hosted API deployment checks above cover
+  API/client flows, not completed browser acceptance testing.
 - **Go version.** The root module requires Go 1.27 (`crypto/mldsa`); see
   [RELEASE.md](RELEASE.md).
 
