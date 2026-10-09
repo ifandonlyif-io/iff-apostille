@@ -149,8 +149,11 @@ func ParsePublicKey(value string) (ed25519.PublicKey, error) {
 	}
 	return ed25519.PublicKey(raw), nil
 }
+
+// NewHeader builds a header of the signer's natural Core version (see
+// Signer.NaturalProtocol); NewHeaderFor takes the version explicitly.
 func NewHeader(kind, issuer string, signer *Signer, now time.Time) Header {
-	return Header{Protocol: Protocol, Kind: kind, Issuer: issuer, IssuerKeyID: signer.KeyID(), IssuedAt: now.UTC().Format(TimestampLayout)}
+	return Header{Protocol: signer.NaturalProtocol(), Kind: kind, Issuer: issuer, IssuerKeyID: signer.KeyID(), IssuedAt: now.UTC().Format(TimestampLayout)}
 }
 func Timestamp(value string) (time.Time, error) {
 	t, err := time.Parse(TimestampLayout, value)
@@ -298,9 +301,11 @@ func signingInput(kind string, payload []byte) []byte {
 	return profile01.signingInput(kind, payload)
 }
 
-// Sign signs value as a Core 0.1 artifact. SignFor takes the version explicitly.
+// Sign signs value as an artifact of the signer's natural Core version: Core 0.1
+// for an Ed25519 signer, Core 0.3 for an ML-DSA-65 signer. The payload must
+// already name that version (NewHeader does). SignFor takes the version explicitly.
 func (s *Signer) Sign(kind string, value any) (Envelope, error) {
-	return s.SignFor(Protocol, kind, value)
+	return s.SignFor(s.NaturalProtocol(), kind, value)
 }
 func VerifyEnvelope(envelope Envelope) (VerifiedEnvelope, error) {
 	if len(envelope.Payload) > MaxInputBytes || len(envelope.Kind) > 64 {

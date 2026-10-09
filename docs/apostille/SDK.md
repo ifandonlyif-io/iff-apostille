@@ -145,19 +145,28 @@ that original and deciding the issuer/key pin remain caller responsibilities.
 ## Core versions and post-quantum signatures
 
 These additions are in this source tree and are not part of `v0.1.0-alpha.1`.
-Signing defaults to Core 0.1. The [0.2](spec/core-0.2.md) and
-[0.3](spec/core-0.3.md) specifications define the other versions.
+From `v0.4.0-alpha.1`, signing without an explicit version uses the signer's
+natural version: an Ed25519 key signs Core 0.1 (the same bytes as before) and an
+ML-DSA-65 key signs Core 0.3. New keys are ML-DSA-65 by default; Ed25519 and Core 0.1
+stay supported for existing keys, verification and explicit choices. The
+[0.2](spec/core-0.2.md) and [0.3](spec/core-0.3.md) specifications define the
+other versions; Core 0.2 is only ever an explicit choice.
 
 - **Version option.** Every signing form takes the protocol identifier as its last
   argument: `sign`, `header`, `createRegistration`, `createStatement`,
-  `createProducerStatement` and `createGrant`. The identifiers are `PROTOCOL`
+  `createProducerStatement` and `createGrant`; omitted, it is the signer's natural
+  version (`naturalProtocol(signer)`; Go `Signer.NaturalProtocol()`), and a statement
+  or grant takes its registration's. In Go the version-less `Sign`, `NewHeader`,
+  `CreateRegistration`, `CreateStatement` and `CreateGrant` behave the same way, so an
+  ML-DSA-65 signer no longer needs the `…For` forms for Core 0.3. The identifiers are `PROTOCOL`
   (0.1), `PROTOCOL_02` and `PROTOCOL_03`; `KNOWN_PROTOCOLS` lists them. A statement
   or grant takes the version of the registration it binds to, and an explicit
   version that disagrees throws. A bundle never mixes versions. Go uses
   `SignFor` and `NewHeaderFor`.
-- **Key algorithm.** `generateKeyFile()` returns an Ed25519 key file, protocol
-  0.1. `generateKeyFile({ algorithm: "ML-DSA-65" })` returns a Core 0.3 key file
-  (about 2.9 KB; the limit is `MAX_KEY_FILE_BYTES`, 4096). The key file's
+- **Key algorithm.** `generateKeyFile()` returns an ML-DSA-65 key file, protocol
+  0.3 (about 2.9 KB; the limit is `MAX_KEY_FILE_BYTES`, 4096).
+  `generateKeyFile({ algorithm: "Ed25519" })` returns a Core 0.1 key file for
+  deployments that still issue Core 0.1. The key file's
   `protocol` selects the algorithm: the 0.1 identifier is Ed25519 and signs 0.1
   and 0.2; the 0.3 identifier is ML-DSA-65 and signs 0.3 only. There is no 0.2 key
   file. `importKeyFile` derives the public key and key ID from the seed under that
@@ -208,7 +217,8 @@ Signing defaults to Core 0.1. The [0.2](spec/core-0.2.md) and
   key generation show this wherever an ML-DSA-65 key is generated or signs. For
   administrator keys the [CLI](CLI.md), which uses the Go standard library
   `crypto/mldsa`, supports 0.3 in `cmd/apostille/v0.3.0-alpha.1` and is the
-  recommended path. This repository's console source still disables hosted
+  recommended path. The browser page now offers ML-DSA-65 first and selected by
+  default (Ed25519 stays selectable). This repository's console source still disables hosted
   sign-in, registration and submission for ML-DSA-65 keys; local signing and
   offline verification work. The hosted API deployment checks above cover
   API/client flows, not completed browser acceptance testing.
@@ -277,8 +287,9 @@ status webhooks, transparency logs and ERC-8004 reputation.
 
 The Go hosted client exposes `ERC8004Config`, `CreateERC8004Binding`, and
 `GetERC8004Binding` for the optional, private detached ERC-8004 binding profile
-0.1. It is not a Core 0.2 organization binding and does not change Core 0.1
-signed envelopes or bundles. Build the request locally with
+0.1, and the matching binding profile 0.3 (see below). It is not a Core 0.2
+organization binding and does not change Core 0.1 signed envelopes or bundles.
+Build the request locally with
 `core.CreateERC8004Request`, obtain the EOA owner's exact EIP-191 signature over
 `core.ERC8004OwnerMessage`, then submit both explicitly. The client verifies
 each returned snapshot locally against its configured issuer and optional
@@ -288,6 +299,20 @@ authority. This profile is separate from Core 0.1 bundles and is not published b
 a public workspace. The authenticated administrator thereby authorizes an
 identity connection; it remains isolated from x402 v3 evidence, reputation,
 anchors, and payment flows.
+
+**Binding profile 0.3.** `CreateERC8004Request` / `createERC8004Request` selects the
+profile from the registration's Core version (0.1 gives binding 0.1, 0.3 gives
+binding 0.3; a Core 0.2 registration has none) and refuses an administrator key of
+another algorithm; issuance (`IssueERC8004Binding`) and verification
+(`VerifyERC8004Binding` / `verifyERC8004Binding`) dispatch on the document's profile.
+The identifiers are `ERC8004Profile` and `ERC8004Profile03` (JS `ERC8004_PROTOCOL`,
+`ERC8004_PROTOCOL_03`, `KNOWN_ERC8004_PROFILES`; Go `KnownERC8004Profiles()`). A 0.3
+document is ML-DSA-65 throughout except the wallet owner's secp256k1 consent, and never
+mixes with 0.1 material. `ERC8004Config` carries `Profiles` (`profiles`), which a
+service that predates 0.3 omits; hosted 0.3 support is deployment pending (see
+[API.md](API.md)). The `apostille verify-erc8004` CLI command still covers binding
+profile 0.1 only. The known-answer document is
+[`testdata/apostille/erc8004-binding-0.3.json`](../../testdata/apostille/erc8004-binding-0.3.json).
 
 `ERC8004Config()` calls the public `/erc8004/config` route without a bearer
 token. Create and retrieval use the private `POST` and `GET

@@ -60,6 +60,8 @@ for (const name of ["curves", "hashes", "post-quantum"]) {
 await copyFile(join(repositoryRoot, "LICENSE"), join(packageRoot, "LICENSE"));
 await copyFile(join(repositoryRoot, "docs/apostille/spec/core-0.1.md"), join(specRoot, "core-0.1.md"));
 await copyFile(join(repositoryRoot, "docs/apostille/spec/erc8004-binding-0.1.md"), join(specRoot, "erc8004-binding-0.1.md"));
+await copyFile(join(repositoryRoot, "docs/apostille/spec/erc8004-binding-0.3.md"), join(specRoot, "erc8004-binding-0.3.md"));
+await copyFile(join(repositoryRoot, "testdata/apostille/erc8004-binding-0.3.json"), join(specRoot, "vectors-erc8004-0.3.json"));
 await copyFile(join(repositoryRoot, "web/apostille-0.1.schema.json"), join(specRoot, "schema.json"));
 await copyFile(join(repositoryRoot, "web/apostille-0.2.schema.json"), join(specRoot, "schema-0.2.json"));
 await copyFile(join(repositoryRoot, "web/apostille-0.3.schema.json"), join(specRoot, "schema-0.3.json"));

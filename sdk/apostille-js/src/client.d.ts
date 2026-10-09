@@ -1,4 +1,4 @@
-import type { AgentRegistration, Bundle, CoreProtocol, Ed25519Signer, Envelope, MLDSA65Signer, ERC8004BindingDocument, ERC8004Envelope, ERC8004Verification, Verification } from "./index.d.ts";
+import type { AgentRegistration, Bundle, CoreProtocol, Ed25519Signer, Envelope, MLDSA65Signer, ERC8004BindingDocument, ERC8004Envelope, ERC8004Profile, ERC8004Verification, Verification } from "./index.d.ts";
 
 export interface ApostilleClientOptions {
   baseURL: string;
@@ -112,7 +112,10 @@ export interface PublicOrganizationResult {
 }
 
 export interface ERC8004Config {
+  /** The binding profile 0.1 identifier, kept for older clients. */
   profile: "https://ifandonlyif.io/apostille/profiles/erc8004-binding/0.1";
+  /** Every binding profile the service issues; an older service omits it. A 0.3 request is accepted for Core 0.3 agents only where listed. */
+  profiles?: readonly ERC8004Profile[];
   enabled: boolean;
   networks: Array<{ chain_id: "1" | "8453"; registry_address: string }>;
   max_binding_age_seconds: 3600;

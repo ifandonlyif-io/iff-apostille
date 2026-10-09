@@ -17,7 +17,7 @@ import {
     verifyArtifact,
     verifyBundle,
 } from "./apostille-core.mjs";
-import { ERC8004_PROTOCOL, createERC8004Request, erc8004OwnerMessage, verifyERC8004Binding } from "./apostille-erc8004.mjs";
+import { ERC8004_PROTOCOL, ERC8004_PROTOCOL_03, KNOWN_ERC8004_PROFILES, createERC8004Request, erc8004OwnerMessage, verifyERC8004Binding } from "./apostille-erc8004.mjs";
 import { profileFor } from "./apostille-profile.mjs";
 import { message, messages } from "./apostille-messages.mjs?v=20261009-core03-2";
 import { DEFAULT_TIMEOUT_MS, MAX_RESPONSE_BYTES } from "./apostille-http.mjs";
@@ -465,11 +465,17 @@ function initialize() {
         return state.erc8004Config?.networks?.find((network) => `${network.chain_id}:${network.registry_address}` === element("erc8004-network")?.value);
     }
 
+    // The binding profile of an agent is that of its registration's Core version; the service must list it.
+    function erc8004ProfileOffered(agent) {
+        const wanted = agent?.delegation?.protocol === PROTOCOL_03 ? ERC8004_PROTOCOL_03 : ERC8004_PROTOCOL;
+        return (state.erc8004Config?.profiles ?? [state.erc8004Config?.profile]).includes(wanted);
+    }
+
     function updateERC8004Buttons() {
         const token = element("erc8004-token")?.value || "";
         let tokenValid = false;
         try { tokenValid = /^(0|[1-9][0-9]{0,77})$/.test(token) && BigInt(token) < (1n << 256n); } catch {}
-        const available = Boolean(!erc8004Busy && state.token && state.adminKey && activeERC8004Agent() && selectedERC8004Network() && tokenValid);
+        const available = Boolean(!erc8004Busy && state.token && state.adminKey && activeERC8004Agent() && erc8004ProfileOffered(activeERC8004Agent()) && selectedERC8004Network() && tokenValid);
         if (element("erc8004-create")) element("erc8004-create").disabled = !available;
         if (element("erc8004-load")) element("erc8004-load").disabled = erc8004Busy || !Boolean(state.token && selectedERC8004Agent());
     }
@@ -501,7 +507,8 @@ function initialize() {
 
     async function loadERC8004Config() {
         const config = await api("/erc8004/config");
-        if (config.profile !== ERC8004_PROTOCOL || config.enabled !== true || !Array.isArray(config.networks) || !config.networks.length) return;
+        const listed = config.profiles === undefined || (Array.isArray(config.profiles) && config.profiles.every((profile) => KNOWN_ERC8004_PROFILES.includes(profile)));
+        if (config.profile !== ERC8004_PROTOCOL || !listed || config.enabled !== true || !Array.isArray(config.networks) || !config.networks.length) return;
         state.erc8004Config = config;
         const network = element("erc8004-network"); network.replaceChildren();
         config.networks.forEach((item) => {
@@ -855,8 +862,9 @@ function initialize() {
         element("result-issuer").textContent = result.issuer;
         element("result-key").textContent = result.issuer_key_id;
         element("result-digest").textContent = `${result.request.chain_id}:${result.request.registry_address}:${result.request.erc8004_agent_id}`;
-        element("result-protocol").textContent = `${ERC8004_PROTOCOL.split("/").slice(-2).join(" ")} · Ed25519`;
-        element("result-protocol-note").textContent = t("protocolClassical");
+        const postQuantum = result.protocol === ERC8004_PROTOCOL_03;
+        element("result-protocol").textContent = `${result.protocol.split("/").slice(-2).join(" ")} · ${postQuantum ? ALGORITHM_03 : "Ed25519"}`;
+        element("result-protocol-note").textContent = t(postQuantum ? "protocolPostQuantumBinding" : "protocolClassical");
         element("result-note").textContent = t("erc8004Boundary");
         element("verification-result").hidden = false;
         if (focus) element("verification-result").focus();
@@ -888,8 +896,8 @@ function initialize() {
             const requirePQ = Boolean(element("verify-require-03")?.checked);
             if (requirePQ) options.acceptedProtocols = [PROTOCOL_03];
             if (policy.issuer) { options.issuer = policy.issuer; options.keyIDs = [policy.keyID]; }
-            const erc8004 = bundle?.protocol === ERC8004_PROTOCOL;
-            if (erc8004 && requirePQ) throw new Error(t("requirePQBinding"));
+            const erc8004 = KNOWN_ERC8004_PROFILES.includes(bundle?.protocol);
+            if (erc8004 && requirePQ && bundle.protocol !== ERC8004_PROTOCOL_03) throw new Error(t("requirePQBinding"));
             const result = erc8004
                 ? await verifyERC8004Binding(bundle, { issuer: policy.issuer, trustedKeyIDs: policy.keyID ? [policy.keyID] : [], now: new Date(when).toISOString() })
                 : await verifyBundle(bundle, options);

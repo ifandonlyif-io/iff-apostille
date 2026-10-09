@@ -277,7 +277,7 @@ test('0.3 envelopes: exact key and signature lengths, tags and algorithm strings
 const audience = 'https://issuer.example/apostille';
 for (const [version, protocol] of [['0.1', PROTOCOL], ['0.2', PROTOCOL_02], ['0.3', PROTOCOL_03]]) {
   test(`${version} signing forms: registration, statement, grant and issuance verify, and the result reports ${version}`, async () => {
-    const file = protocol === PROTOCOL_03 ? { algorithm: 'ML-DSA-65' } : undefined;
+    const file = { algorithm: protocol === PROTOCOL_03 ? 'ML-DSA-65' : 'Ed25519' };
     const admin = await importKeyFile(await generateKeyFile(file)), agent = await importKeyFile(await generateKeyFile(file)), issuerSigner = await importKeyFile(await generateKeyFile(file));
     assert.equal(admin.algorithm, protocol === PROTOCOL_03 ? 'ML-DSA-65' : 'Ed25519');
     const reg = await createRegistration(admin, agent, audience, 30, protocol);
@@ -299,15 +299,16 @@ for (const [version, protocol] of [['0.1', PROTOCOL], ['0.2', PROTOCOL_02], ['0.
 }
 
 test('signing refuses a key of the wrong algorithm, a mixed binding and a bad version before any work', async () => {
-  const ed = await importKeyFile(await generateKeyFile()), ml = await importKeyFile(await generateKeyFile({ algorithm: 'ML-DSA-65' }));
-  const edAgent = await importKeyFile(await generateKeyFile()), mlAgent = await importKeyFile(await generateKeyFile({ algorithm: 'ML-DSA-65' }));
+  const ed = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" })), ml = await importKeyFile(await generateKeyFile({ algorithm: 'ML-DSA-65' }));
+  const edAgent = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" })), mlAgent = await importKeyFile(await generateKeyFile({ algorithm: 'ML-DSA-65' }));
   await rejectsWith(createRegistration(ed, edAgent, audience, 30, PROTOCOL_03), /algorithm/);
   await rejectsWith(createRegistration(ml, mlAgent, audience, 30, PROTOCOL_02), /algorithm/);
   await rejectsWith(createRegistration(ed, mlAgent, audience, 30, PROTOCOL), /algorithm/);
   await rejectsWith(createRegistration(ed, edAgent, audience, 30, 'https://ifandonlyif.io/apostille/spec/never-defined'), /Unsupported protocol/);
   await rejectsWith(createProducerStatement(bytes('x'), 'text/plain', ed, crypto.randomUUID(), PROTOCOL_03), /algorithm/);
   assert.throws(() => header('origin-statement', ed, new Date(), undefined, 'nope'), /Unsupported protocol/);
-  await rejectsWith(sign('agent-acceptance', { ...header('agent-acceptance', ml), agent_id: crypto.randomUUID(), delegation_sha256: '0'.repeat(64) }, ml), /algorithm/, 'a 0.3 signer does not sign the default 0.1');
+  await rejectsWith(sign('agent-acceptance', { ...header('agent-acceptance', ml, new Date(), undefined, PROTOCOL), agent_id: crypto.randomUUID(), delegation_sha256: '0'.repeat(64) }, ml, PROTOCOL), /algorithm/, 'a 0.3 signer does not sign 0.1');
+  await rejectsWith(sign('agent-acceptance', { ...header('agent-acceptance', ed), agent_id: crypto.randomUUID(), delegation_sha256: '0'.repeat(64) }, ed, PROTOCOL_03), /algorithm/, 'an Ed25519 signer does not sign 0.3');
   // No mixing at signing time: a statement or grant refuses a registration of another version.
   const reg02 = await createRegistration(ed, edAgent, audience, 30, PROTOCOL_02), reg01 = await createRegistration(ed, edAgent, audience);
   await rejectsWith(createStatement(bytes('x'), 'text/plain', edAgent, reg02, PROTOCOL), /one protocol version/);
@@ -320,8 +321,40 @@ test('signing refuses a key of the wrong algorithm, a mixed binding and a bad ve
   await rejectsWith(issueBundle({ protocol: PROTOCOL_02, statement: statement02, ...reg02, certificate: null }, ml, audience), /algorithm/);
 });
 
+// ---------------------------------------------------------------------------
+// Post-quantum defaults: a signer's natural version
+// ---------------------------------------------------------------------------
+
+test('new key files are ML-DSA-65 by default and signing without a protocol uses the signer\'s natural version', async () => {
+  const file = await generateKeyFile();
+  assert.equal(file.protocol, PROTOCOL_03);
+  assert.equal((await generateKeyFile({})).protocol, PROTOCOL_03);
+  assert.equal((await generateKeyFile({ algorithm: 'Ed25519' })).protocol, PROTOCOL);
+  const ml = await importKeyFile(file), mlAgent = await importKeyFile(await generateKeyFile());
+  const ed = await importKeyFile(await generateKeyFile({ algorithm: 'Ed25519' })), edAgent = await importKeyFile(await generateKeyFile({ algorithm: 'Ed25519' }));
+  assert.equal(core.naturalProtocol(ml), PROTOCOL_03);
+  assert.equal(core.naturalProtocol(ed), PROTOCOL);
+  assert.equal(core.naturalProtocol({ key: ed.key, keyID: ed.keyID, publicKey: ed.publicKey }), PROTOCOL, 'an untagged signer is Ed25519');
+  assert.equal(header('origin-statement', ml).protocol, PROTOCOL_03);
+  assert.equal(header('origin-statement', ed).protocol, PROTOCOL);
+  for (const [admin, agent, protocol, algorithm] of [[ml, mlAgent, PROTOCOL_03, 'ML-DSA-65'], [ed, edAgent, PROTOCOL, 'Ed25519']]) {
+    const reg = await createRegistration(admin, agent, audience);
+    assert.equal(reg.delegation.protocol, protocol); assert.equal(reg.acceptance.signature.algorithm, algorithm);
+    const statement = await createStatement(bytes('natural'), 'text/plain', agent, reg);
+    assert.equal(statement.protocol, protocol);
+    assert.equal((await createGrant(statement, reg, admin, audience, 'private')).protocol, protocol);
+    const producer = await createProducerStatement(bytes('natural'), 'text/plain', agent, crypto.randomUUID());
+    assert.equal(producer.protocol, protocol);
+    const issued = await issueBundle({ protocol, statement, ...reg, certificate: null }, agent, audience);
+    assert.equal(issued.certificate.protocol, protocol);
+    assert.equal((await verifyBundle(issued)).protocol, protocol);
+  }
+  await rejectsWith(createRegistration(ml, edAgent, audience), /algorithm/, 'mixed algorithms are refused, not silently downgraded');
+  await rejectsWith(createRegistration(ed, mlAgent, audience), /algorithm/);
+});
+
 test('0.2 signing checks the signer key under the strict rules and the 0.2 identifier grammar', async () => {
-  const admin = await importKeyFile(await generateKeyFile()), agent = await importKeyFile(await generateKeyFile());
+  const admin = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" })), agent = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" }));
   await rejectsWith(createRegistration(admin, agent, 'https://issuer.example/a%20b', 30, PROTOCOL_02), /Invalid delegation/);
   await rejectsWith(createRegistration(admin, agent, 'https://Issuer.example/a', 30, PROTOCOL_02), /Invalid delegation/);
   // A signer whose public key is a small-order point cannot release a signature.
@@ -339,7 +372,7 @@ test('0.2 signing checks the signer key under the strict rules and the 0.2 ident
 // ---------------------------------------------------------------------------
 
 test('key files: 0.1 is Ed25519, 0.3 is ML-DSA-65, 0.2 and anything else is refused', async () => {
-  const ed = await generateKeyFile(), ml = await generateKeyFile({ algorithm: 'ML-DSA-65' });
+  const ed = await generateKeyFile({ algorithm: "Ed25519" }), ml = await generateKeyFile({ algorithm: 'ML-DSA-65' });
   assert.equal(ed.protocol, PROTOCOL); assert.equal(ml.protocol, PROTOCOL_03);
   assert.equal(ed.public_key.length, 43); assert.equal(ml.public_key.length, 2603); assert.equal(ml.seed.length, 43);
   assert.equal(JSON.stringify({ ...ml, role: 'admin' }).length < core.MAX_KEY_FILE_BYTES, true);
@@ -387,7 +420,7 @@ test('a signer keeps its seed-derived key: signing is hedged and deterministic k
 // ---------------------------------------------------------------------------
 
 test('0.3 login challenge: prefix, 4096-byte bound, purpose separation and key type', async () => {
-  const ml = await importKeyFile(await generateKeyFile({ algorithm: 'ML-DSA-65' })), ed = await importKeyFile(await generateKeyFile());
+  const ml = await importKeyFile(await generateKeyFile({ algorithm: 'ML-DSA-65' })), ed = await importKeyFile(await generateKeyFile({ algorithm: "Ed25519" }));
   const message = `${core.LOGIN_PREFIX_03}issuer:${audience}\nkey_id:${ml.keyID}\nchallenge:${crypto.randomUUID()}\nexpires_at:2030-01-01T00:00:00Z\npurpose:register_or_login`;
   const signature = await signLogin03(message, ml);
   assert.equal(signature.length, 4412);

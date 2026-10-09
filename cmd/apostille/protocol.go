@@ -21,6 +21,40 @@ func parseProtocol(value string) (string, error) {
 	return "", fmt.Errorf("unsupported protocol %q: use 0.1, 0.2, 0.3 or a full protocol identifier", value)
 }
 
+// protocolAuto is the --protocol value that signs the key file's own version.
+const protocolAuto = "auto"
+
+// parseProtocolChoice is parseProtocol that also accepts "auto".
+func parseProtocolChoice(value string) (string, error) {
+	if value == protocolAuto {
+		return protocolAuto, nil
+	}
+	protocol, err := parseProtocol(value)
+	if err != nil {
+		return "", fmt.Errorf("unsupported protocol %q: use auto, 0.1, 0.2, 0.3 or a full protocol identifier", value)
+	}
+	return protocol, nil
+}
+
+// naturalProtocol is the Core version a key signs when none is named: Core 0.1
+// for an Ed25519 key and Core 0.3 for an ML-DSA-65 key (what the root module's
+// Signer.NaturalProtocol reports).
+func naturalProtocol(signer *core.Signer) string {
+	if signer.Algorithm() == core.Algorithm03 {
+		return core.Protocol03
+	}
+	return core.Protocol
+}
+
+// resolveProtocol turns a parsed --protocol choice into a protocol identifier:
+// "auto" is the signing key's natural version, anything else is kept.
+func resolveProtocol(choice string, signer *core.Signer) string {
+	if choice == protocolAuto {
+		return naturalProtocol(signer)
+	}
+	return choice
+}
+
 // protocolList is a repeatable flag collecting protocol versions.
 type protocolList []string
 

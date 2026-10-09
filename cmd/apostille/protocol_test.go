@@ -82,7 +82,7 @@ func TestKeygenAlgorithms(t *testing.T) {
 		protocol  string
 		algorithm string
 	}{
-		{"default", nil, core.Protocol, core.Algorithm},
+		{"default", nil, core.Protocol03, core.Algorithm03},
 		{"ed25519", []string{"--algorithm", "ed25519"}, core.Protocol, core.Algorithm},
 		{"ml-dsa-65", []string{"--algorithm", "ml-dsa-65"}, core.Protocol03, core.Algorithm03},
 	} {
@@ -199,17 +199,58 @@ func TestIssueFollowsStatementProtocolWithoutFlag(t *testing.T) {
 	require.Equal(t, core.Protocol03, bundle.Certificate.Protocol)
 }
 
-func TestDefaultProtocolIsCore01(t *testing.T) {
+// TestAutoProtocolFollowsKeyFile covers --protocol auto, the default of
+// delegate, sign and grant: the key file's own version (Ed25519 gives Core 0.1,
+// ML-DSA-65 gives Core 0.3), whether the flag is omitted or written out.
+func TestAutoProtocolFollowsKeyFile(t *testing.T) {
+	for _, tc := range []struct {
+		algorithm, protocol string
+		flag                []string
+	}{
+		{"ed25519", core.Protocol, nil},
+		{"ed25519", core.Protocol, []string{"--protocol", "auto"}},
+		{"ml-dsa-65", core.Protocol03, nil},
+		{"ml-dsa-65", core.Protocol03, []string{"--protocol", "auto"}},
+	} {
+		t.Run(tc.algorithm+strings.Join(tc.flag, ""), func(t *testing.T) {
+			dir := t.TempDir()
+			admin := generateKeyWith(t, dir, "admin", tc.algorithm)
+			agent := generateKeyWith(t, dir, "agent", tc.algorithm)
+			input := filepath.Join(dir, "artifact.txt")
+			require.NoError(t, os.WriteFile(input, []byte("auto\n"), 0o644))
+			registrationPath, statementPath, grantPath := filepath.Join(dir, "registration.json"), filepath.Join(dir, "statement.json"), filepath.Join(dir, "grant.json")
+			for _, step := range [][]string{
+				{"delegate", "--admin-key", admin, "--agent-key", agent, "--audience", flowAudience, "--out", registrationPath},
+				{"sign", "--key", agent, "--file", input, "--registration", registrationPath, "--out", statementPath},
+				{"grant", "--admin-key", admin, "--statement", statementPath, "--registration", registrationPath, "--audience", flowAudience, "--visibility", "private", "--out", grantPath},
+			} {
+				_, _, err := invokeCLI(t, cliNow, append(step, tc.flag...)...)
+				require.NoError(t, err, step[0])
+			}
+			registration, err := readRegistration(registrationPath)
+			require.NoError(t, err)
+			statement, err := readEnvelope(statementPath)
+			require.NoError(t, err)
+			grant, err := readEnvelope(grantPath)
+			require.NoError(t, err)
+			for _, envelope := range []core.Envelope{registration.Delegation, registration.Acceptance, statement, grant} {
+				require.Equal(t, tc.protocol, envelope.Protocol)
+				require.Equal(t, algorithmFor(tc.protocol), envelope.Signature.Algorithm)
+			}
+		})
+	}
+	// An explicit value is unchanged: an Ed25519 key still signs Core 0.2 on request.
 	dir := t.TempDir()
-	adminPath := generateTestKey(t, dir, "admin", "administrator")
-	agentPath := generateTestKey(t, dir, "agent", "agent")
+	admin, agent := generateKeyWith(t, dir, "admin", "ed25519"), generateKeyWith(t, dir, "agent", "ed25519")
 	registrationPath := filepath.Join(dir, "registration.json")
-	_, _, err := invokeCLI(t, cliNow, "delegate", "--admin-key", adminPath, "--agent-key", agentPath,
-		"--audience", flowAudience, "--out", registrationPath)
+	_, _, err := invokeCLI(t, cliNow, "delegate", "--admin-key", admin, "--agent-key", agent, "--audience", flowAudience, "--out", registrationPath, "--protocol", "0.2")
 	require.NoError(t, err)
 	registration, err := readRegistration(registrationPath)
 	require.NoError(t, err)
-	require.Equal(t, core.Protocol, registration.Delegation.Protocol)
+	require.Equal(t, core.Protocol02, registration.Delegation.Protocol)
+	_, _, err = invokeCLI(t, cliNow, "delegate", "--admin-key", admin, "--agent-key", agent, "--audience", flowAudience, "--out", filepath.Join(dir, "bad.json"), "--protocol", "latest")
+	require.ErrorContains(t, err, "unsupported protocol")
+	require.ErrorContains(t, err, "auto")
 }
 
 func TestAcceptProtocolNarrowing(t *testing.T) {
@@ -250,12 +291,15 @@ func TestAlgorithmProtocolMismatchIsRefusedBeforeSigning(t *testing.T) {
 	}{
 		{"delegate 0.3 with Ed25519 admin", []string{"delegate", "--admin-key", edAdmin, "--agent-key", mlAgent, "--audience", flowAudience, "--out", out("a"), "--protocol", "0.3"}, "admin key: Core 0.3 needs an ML-DSA-65 key file, but the key file is Ed25519"},
 		{"delegate 0.3 with Ed25519 agent", []string{"delegate", "--admin-key", mlAdmin, "--agent-key", edAgent, "--audience", flowAudience, "--out", out("b"), "--protocol", "0.3"}, "agent key: Core 0.3 needs an ML-DSA-65 key file"},
-		{"delegate 0.1 with ML-DSA admin", []string{"delegate", "--admin-key", mlAdmin, "--agent-key", edAgent, "--audience", flowAudience, "--out", out("c")}, "admin key: Core 0.1 needs an Ed25519 key file, but the key file is ML-DSA-65"},
+		{"delegate 0.1 with ML-DSA admin", []string{"delegate", "--admin-key", mlAdmin, "--agent-key", edAgent, "--audience", flowAudience, "--out", out("c"), "--protocol", "0.1"}, "admin key: Core 0.1 needs an Ed25519 key file, but the key file is ML-DSA-65"},
+		{"delegate auto with ML-DSA admin and Ed25519 agent", []string{"delegate", "--admin-key", mlAdmin, "--agent-key", edAgent, "--audience", flowAudience, "--out", out("c2")}, "agent key: Core 0.3 needs an ML-DSA-65 key file, but the key file is Ed25519"},
+		{"delegate auto with Ed25519 admin and ML-DSA agent", []string{"delegate", "--admin-key", edAdmin, "--agent-key", mlAgent, "--audience", flowAudience, "--out", out("c3")}, "agent key: Core 0.1 needs an Ed25519 key file, but the key file is ML-DSA-65"},
+		{"sign auto with ML-DSA key and a Core 0.1 registration", []string{"sign", "--key", mlAgent, "--file", artifact, "--registration", f01.registration, "--out", out("c4")}, "registration is Core 0.1 but the command selects Core 0.3; versions must not mix"},
 		{"delegate 0.2 with ML-DSA agent", []string{"delegate", "--admin-key", edAdmin, "--agent-key", mlAgent, "--audience", flowAudience, "--out", out("d"), "--protocol", "0.2"}, "agent key: Core 0.2 needs an Ed25519 key file"},
 		{"sign 0.3 with Ed25519 key", []string{"sign", "--key", edAgent, "--file", artifact, "--agent-id", flowAgentID, "--out", out("e"), "--protocol", "0.3"}, "Core 0.3 needs an ML-DSA-65 key file"},
 		{"sign 0.2 with ML-DSA key", []string{"sign", "--key", mlAgent, "--file", artifact, "--agent-id", flowAgentID, "--out", out("f"), "--protocol", "0.2"}, "Core 0.2 needs an Ed25519 key file"},
 		{"grant 0.3 with Ed25519 key", []string{"grant", "--admin-key", edAdmin, "--statement", f03.statement, "--registration", f03.registration, "--audience", flowAudience, "--visibility", "private", "--out", out("g"), "--protocol", "0.3"}, "admin key: Core 0.3 needs an ML-DSA-65 key file"},
-		{"grant 0.1 with ML-DSA key", []string{"grant", "--admin-key", mlAdmin, "--statement", f01.statement, "--registration", f01.registration, "--audience", flowAudience, "--visibility", "private", "--out", out("h")}, "admin key: Core 0.1 needs an Ed25519 key file"},
+		{"grant 0.1 with ML-DSA key", []string{"grant", "--admin-key", mlAdmin, "--statement", f01.statement, "--registration", f01.registration, "--audience", flowAudience, "--visibility", "private", "--out", out("h"), "--protocol", "0.1"}, "admin key: Core 0.1 needs an Ed25519 key file"},
 		{"issue 0.3 statement with Ed25519 issuer", []string{"issue", "--key", f01.issuer, "--issuer", flowAudience, "--statement", f03.statement, "--registration", f03.registration, "--out", out("i")}, "issuer key: Core 0.3 needs an ML-DSA-65 key file, but the key file is Ed25519"},
 		{"issue 0.1 statement with ML-DSA issuer", []string{"issue", "--key", f03.issuer, "--issuer", flowAudience, "--statement", f01.statement, "--registration", f01.registration, "--out", out("j")}, "issuer key: Core 0.1 needs an Ed25519 key file, but the key file is ML-DSA-65"},
 	} {

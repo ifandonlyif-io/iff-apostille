@@ -5,8 +5,21 @@ import (
 	"time"
 )
 
-// Explicit-version signing. The functions without a "For" suffix sign Core 0.1
-// and stay the default; these take any protocol in KnownProtocols.
+// Explicit-version signing. The functions without a "For" suffix sign the
+// signer's natural version (NaturalProtocol): Core 0.1 for an Ed25519 signer,
+// Core 0.3 for an ML-DSA-65 signer. These take any protocol in KnownProtocols.
+
+// NaturalProtocol is the Core version a signer signs when the caller does not
+// name one: Core 0.1 for an Ed25519 key (byte-identical to the former default)
+// and Core 0.3 for an ML-DSA-65 key. A disabled signer reports Core 0.1; it
+// signs nothing. Core 0.2 is never natural: an Ed25519 key signs it only
+// through the explicit "For" forms.
+func (s *Signer) NaturalProtocol() string {
+	if s.Algorithm() == Algorithm03 {
+		return Protocol03
+	}
+	return Protocol
+}
 
 // NewHeaderFor is NewHeader for a known protocol version.
 func NewHeaderFor(protocol, kind, issuer string, signer *Signer, now time.Time) (Header, error) {

@@ -8,7 +8,8 @@ const issuer = "https://issuer.example/apostille";
 const baseURL = "https://issuer.example/api/apostille/v1";
 const bytes = (value) => new TextEncoder().encode(value);
 const json = (value, status = 200, headers = {}) => new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json", ...headers } });
-const signer = async () => core.importKeyFile(await core.generateKeyFile());
+// The hosted service still issues Core 0.1 (cutover pending), so these tests use Ed25519 keys; Core 0.3 hosted coverage is in client-core03.test.mjs.
+const signer = async () => core.importKeyFile(await core.generateKeyFile({ algorithm: "Ed25519" }));
 function gate() { let resolve; const promise = new Promise((r) => { resolve = r; }); return { promise, resolve }; }
 function challenge(key, claimedIssuer = issuer) {
     const challenge_id = crypto.randomUUID(), expires_at = core.timestamp(new Date(Date.now() + 300000));
@@ -302,4 +303,75 @@ test("ERC-8004 client permits an expired request to reach the server's identical
     const replay = await client.createERC8004Binding(agentID, request, ownerSignature);
     assert.equal(replay.id, record.id);
     assert.equal(calls, 1, "the server decides whether the expired request is an identical replay");
+});
+
+// ERC-8004 binding profile 0.3: Core 0.3 registrations and ML-DSA-65 administrator and issuer signatures.
+async function erc8004Document03(bindingSigner, registration, request, ownerSignature) {
+    const issued = new Date(); issued.setMilliseconds(0);
+    const payload = {
+        protocol: core.ERC8004_PROTOCOL_03, kind: "erc8004-binding", issuer,
+        issuer_key_id: bindingSigner.keyID, issued_at: core.timestamp(issued), request,
+        owner_signature: ownerSignature, block_number: "123", block_hash: `0x${"12".repeat(32)}`,
+        block_timestamp: core.timestamp(new Date(issued.getTime() - 30000)),
+        expires_at: core.timestamp(new Date(issued.getTime() + 3600000)), check: "owner_of_eoa",
+    };
+    const raw = bytes(core.canonical(payload));
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", raw));
+    const domain = bytes("iff-apostille/erc8004-binding/snapshot/0.3\n"), input = new Uint8Array(domain.length + digest.length);
+    input.set(domain); input.set(digest, domain.length);
+    const { signMLDSA } = await import("../dist/apostille-mldsa.mjs");
+    return { protocol: core.ERC8004_PROTOCOL_03, binding: {
+        protocol: core.ERC8004_PROTOCOL_03, kind: "erc8004-binding", payload: core.b64(raw), payload_sha256: await core.hash(raw),
+        signature: { algorithm: "ML-DSA-65", key_id: bindingSigner.keyID, public_key: bindingSigner.publicKey, value: core.b64(signMLDSA(bindingSigner.key, input)) },
+    }, ...registration };
+}
+
+test("ERC-8004 profile 0.3: config lists profiles and the client verifies a 0.3 binding of a Core 0.3 agent", async () => {
+    const ml = async () => core.importKeyFile(await core.generateKeyFile());
+    const admin = await ml(), agent = await ml(), bindingSigner = await ml();
+    const registration = await core.createRegistration(admin, agent, issuer);
+    assert.equal(registration.delegation.protocol, core.PROTOCOL_03);
+    const request = await core.createERC8004Request(admin, registration, {
+        chain_id: "8453", registry_address: "0x1111111111111111111111111111111111111111",
+        erc8004_agent_id: "42", owner_address: "0x2222222222222222222222222222222222222222",
+    }, issuer);
+    assert.equal(request.protocol, core.ERC8004_PROTOCOL_03);
+    assert.deepEqual(core.KNOWN_ERC8004_PROFILES, [core.ERC8004_PROTOCOL, core.ERC8004_PROTOCOL_03]);
+    const ownerSignature = `0x${"34".repeat(65)}`, agentID = (await core.verifyRegistration(registration)).agent_id;
+    const document = await erc8004Document03(bindingSigner, registration, request, ownerSignature);
+    const checked = await core.verifyERC8004Binding(document);
+    assert.equal(checked.protocol, core.ERC8004_PROTOCOL_03);
+    const record = { id: crypto.randomUUID(), agent_id: agentID, document, created_at: checked.checked_at, expires_at: checked.expires_at };
+    const config = { profile: core.ERC8004_PROTOCOL, profiles: core.KNOWN_ERC8004_PROFILES, enabled: true, networks: [{ chain_id: "8453", registry_address: "0x1111111111111111111111111111111111111111" }], max_binding_age_seconds: 3600, wallet_support: "eoa_only" };
+    let served = config;
+    const client = new ApostilleClient({ baseURL, issuer, trustedKeyIDs: [bindingSigner.keyID], accessToken: "token", fetch: async (url, options) => url.endsWith("/erc8004/config") ? json(served) : json(record, options.method === "POST" ? 201 : 200) });
+    assert.deepEqual((await client.erc8004Config()).profiles, core.KNOWN_ERC8004_PROFILES);
+    served = { ...config, profiles: [core.ERC8004_PROTOCOL, "https://ifandonlyif.io/apostille/profiles/erc8004-binding/0.2"] };
+    await assert.rejects(client.erc8004Config(), (error) => error.code === "invalid_erc8004_config");
+    served = { ...config, profiles: undefined };
+    assert.equal((await client.erc8004Config()).profiles, undefined, "an older service omits profiles");
+    const created = await client.createERC8004Binding(agentID, request, ownerSignature);
+    assert.equal(created.verification.issuer_trust, "pinned");
+    assert.equal(created.verification.protocol, core.ERC8004_PROTOCOL_03);
+});
+
+test("ERC-8004 profile 0.3: the published known-answer document verifies", async () => {
+    const vector = JSON.parse(await readFile(new URL("../spec/vectors-erc8004-0.3.json", import.meta.url), "utf8"));
+    const checked = await core.verifyERC8004Binding(vector.document, { issuer: vector.issuer, trustedKeyIDs: [vector.issuer_key_id], now: vector.evaluation_time });
+    assert.equal(checked.issuer_trust, "pinned");
+    assert.equal(checked.protocol, core.ERC8004_PROTOCOL_03);
+});
+
+test("new keys are ML-DSA-65 and signing without a protocol uses the signer's natural version", async (t) => {
+    t.mock.method(globalThis, "fetch", () => { throw new Error("offline SDK made a network request"); });
+    const file = await core.generateKeyFile();
+    assert.equal(file.protocol, core.PROTOCOL_03);
+    assert.equal((await core.generateKeyFile({ algorithm: "Ed25519" })).protocol, core.PROTOCOL);
+    const admin = await core.importKeyFile(file), agent = await core.importKeyFile(await core.generateKeyFile());
+    assert.equal(core.naturalProtocol(admin), core.PROTOCOL_03);
+    const registration = await core.createRegistration(admin, agent, issuer);
+    const statement = await core.createStatement(bytes("pq default"), "text/plain", agent, registration);
+    assert.equal(statement.protocol, core.PROTOCOL_03);
+    const issued = await core.issueBundle({ protocol: statement.protocol, statement, ...registration, certificate: null }, admin, issuer);
+    assert.equal((await core.verifyBundle(issued)).protocol, core.PROTOCOL_03);
 });

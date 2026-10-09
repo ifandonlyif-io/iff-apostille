@@ -191,8 +191,9 @@ export async function importKeyFile(file) {
     need(jwk.x === file.public_key && await fingerprint(jwk.x) === file.key_id, "Key file fingerprint mismatch.");
     return { key, keyID: file.key_id, publicKey: file.public_key, algorithm };
 }
-// options.algorithm is "Ed25519" (the default) or "ML-DSA-65"; the latter returns a Core 0.3 key file.
-export async function generateKeyFile({ algorithm = ALGORITHM } = {}) {
+// options.algorithm is "ML-DSA-65" (the default, a Core 0.3 key file) or "Ed25519" (a Core 0.1 key file,
+// for deployments that still issue Core 0.1).
+export async function generateKeyFile({ algorithm = ALGORITHM_03 } = {}) {
     need(algorithm === ALGORITHM || algorithm === ALGORITHM_03, "Unsupported key algorithm.");
     if (algorithm === ALGORITHM_03) {
         const seed = crypto.getRandomValues(new Uint8Array(32)), publicKey = b64(mldsaKeys(seed).publicKey), file = { protocol: PROTOCOL_03, seed: b64(seed), public_key: publicKey, key_id: await fingerprint(publicKey, PROTOCOL_03) };
@@ -202,12 +203,14 @@ export async function generateKeyFile({ algorithm = ALGORITHM } = {}) {
     const jwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
     return { protocol: PROTOCOL, seed: jwk.d, public_key: jwk.x, key_id: await fingerprint(jwk.x) };
 }
-// Signing forms take the protocol explicitly and default to Core 0.1.
-export function header(kind, signer, now = new Date(), identity = keyIdentity(signer.keyID), protocol = PROTOCOL) { return { protocol: profileOf(protocol).protocol, kind, issuer: identity, issuer_key_id: signer.keyID, issued_at: timestamp(now) }; }
+// A signer's natural Core version: 0.3 for an ML-DSA-65 key, 0.1 for an Ed25519 key. Signing forms
+// default to it and take the protocol explicitly otherwise (an Ed25519 key can also sign Core 0.2).
+export function naturalProtocol(signer) { return algorithmOf(signer) === ALGORITHM_03 ? PROTOCOL_03 : PROTOCOL; }
+export function header(kind, signer, now = new Date(), identity = keyIdentity(signer.keyID), protocol = naturalProtocol(signer)) { return { protocol: profileOf(protocol).protocol, kind, issuer: identity, issuer_key_id: signer.keyID, issued_at: timestamp(now) }; }
 async function signBytes(signer, input) {
     return algorithmOf(signer) === ALGORITHM_03 ? signMLDSA(signer.key, input) : new Uint8Array(await crypto.subtle.sign("Ed25519", signer.key, input));
 }
-export async function sign(kind, payload, signer, protocol = PROTOCOL) {
+export async function sign(kind, payload, signer, protocol = naturalProtocol(signer)) {
     const prof = profileOf(protocol); need(algorithmOf(signer) === prof.algorithm, signerMismatch);
     await validatePayload(kind, payload, prof); need(payload.issuer_key_id === signer.keyID, "Signed key ID does not match signer.");
     const raw = encoder.encode(canonical(payload)), input = await signingInput(kind, raw, prof);
@@ -258,7 +261,7 @@ export function verifyLogin03(publicKey, message, signature) {
         return verifyMLDSA(decodeKey(publicKey, prof), raw, unb64(signature));
     } catch { return false; }
 }
-export async function createRegistration(admin, agent, audience, days = 30, protocol = PROTOCOL) {
+export async function createRegistration(admin, agent, audience, days = 30, protocol = naturalProtocol(admin)) {
     const prof = profileOf(protocol); need(algorithmOf(admin) === prof.algorithm && algorithmOf(agent) === prof.algorithm, signerMismatch);
     const now = new Date(), agentID = crypto.randomUUID();
     const de = await sign("agent-delegation", { ...header("agent-delegation", admin, now, keyIdentity(admin.keyID), protocol), agent_id: agentID, agent_key_id: agent.keyID, agent_public_key: agent.publicKey, service_audience: audience, not_before: timestamp(now), expires_at: timestamp(new Date(now.getTime() + days * 86400000)), scopes: ["sign_origin_statement"] }, admin, protocol);
@@ -277,7 +280,7 @@ export async function createStatement(bytes, mediaType, agent, reg, protocol) {
     need(d.agent_key_id === agent.keyID, "The loaded key belongs to a different agent.");
     return sign("origin-statement", { ...header("origin-statement", agent, new Date(), keyIdentity(agent.keyID), version), agent_id: d.agent_id, delegation_sha256: await envelopeDigest(reg.delegation), artifact_sha256: await hash(bytes), artifact_size: String(bytes.length), artifact_media_type: mediaType || "application/octet-stream", nonce: crypto.randomUUID() }, agent, version);
 }
-export async function createProducerStatement(bytes, mediaType, agent, agentID, protocol = PROTOCOL) {
+export async function createProducerStatement(bytes, mediaType, agent, agentID, protocol = naturalProtocol(agent)) {
     return sign("origin-statement", { ...header("origin-statement", agent, new Date(), keyIdentity(agent.keyID), protocol), agent_id: agentID, delegation_sha256: "", artifact_sha256: await hash(bytes), artifact_size: String(bytes.length), artifact_media_type: mediaType || "application/octet-stream", nonce: crypto.randomUUID() }, agent, protocol);
 }
 // Local issuance checks source signatures only. Hosted publication still needs

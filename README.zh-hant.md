@@ -38,7 +38,7 @@
 | JavaScript / TypeScript | [SDK](sdk/apostille-js/) | 預設 import 離線運作，另有獨立 `/client` 入口 |
 | 本機 CLI | [指令](docs/apostille/CLI.md) | 金鑰產生、簽署、本機簽發與查驗 |
 | 瀏覽器查驗器 | [原始碼](web/)、`make verifier` | 四語系本機查驗；不查詢金鑰、不使用 RPC 或遙測 |
-| ERC-8004 profile | [規格](docs/apostille/spec/erc8004-binding-0.1.md) | 由 issuer 檢查的獨立歷史所有權證據 |
+| ERC-8004 profile | [0.1](docs/apostille/spec/erc8004-binding-0.1.md)、[0.3](docs/apostille/spec/erc8004-binding-0.3.md)、[0.3 vector](testdata/apostille/erc8004-binding-0.3.json) | 由 issuer 檢查的獨立歷史所有權證據；0.3 以 ML-DSA-65 簽署 Core 0.3 註冊 |
 | 實驗性 ZK | [指引](docs/apostille/ZK.md)、[模組](apostille/zkbudget/) | 本機查驗已承諾預算的條件，僅支援 Go/CLI |
 
 ## 從原始碼試用
@@ -68,7 +68,7 @@ npm pack ./sdk/apostille-js --pack-destination ./dist
 
 ## 路線圖
 
-Core 0.2（[規格](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）加入明確的識別字文法、嚴格 Ed25519 查驗與版本命名空間。Core 0.3（[規格](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）沿用該文法，並以 ML-DSA-65（FIPS 204）簽署。Go 與 JavaScript 參考實作、向量與相容性案例都在此原始碼樹中，並已在 `v0.3.0-alpha.1` 發佈；瀏覽器查驗器可查驗三個版本，CLI 也已支援（`--protocol 0.1|0.2|0.3`、`keygen --algorithm ml-dsa-65`、`verify --accept-protocol`）。託管服務與託管 API 用戶端尚不支援 0.2 與 0.3。在宣布切換之前，預設簽署版本仍為 Core 0.1；0.2 與 0.3 為明確選項。進度由 [0.2](docs/apostille/proposals/core-0.2-implementation-plan.md) 與 [0.3](docs/apostille/proposals/core-0.3-implementation-plan.md) 實作計畫追蹤。JS SDK 的 npm 發佈與預編譯 CLI 執行檔也在規劃中，均不屬於 `v0.3.0-alpha.1`。
+Core 0.2（[規格](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）加入明確的識別字文法、嚴格 Ed25519 查驗與版本命名空間。Core 0.3（[規格](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）沿用該文法，並以 ML-DSA-65（FIPS 204）簽署。Go 與 JavaScript 參考實作、向量與相容性案例都在此原始碼樹中，並已在 `v0.3.0-alpha.1` 發佈；瀏覽器查驗器可查驗三個版本，CLI 也已支援（`--protocol 0.1|0.2|0.3`、`keygen --algorithm ml-dsa-65`、`verify --accept-protocol`）。自 `v0.4.0-alpha.1`（合併後打標籤）起，新金鑰預設為 ML-DSA-65（Core 0.3）：`keygen`、Go 的不帶版本簽署輔助函式、JavaScript SDK 與瀏覽器頁面都依所持金鑰自身的版本簽署（Ed25519 金鑰仍簽 Core 0.1，位元組完全一致）。Ed25519 與 Core 0.1 仍支援現有金鑰、查驗與明確選擇；Core 0.2 為明確選項。託管服務簽發 Core 0.1 與 0.3（不簽發 0.2），詳見 [API.md](docs/apostille/API.md)。進度由 [0.2](docs/apostille/proposals/core-0.2-implementation-plan.md) 與 [0.3](docs/apostille/proposals/core-0.3-implementation-plan.md) 實作計畫追蹤。JS SDK 的 npm 發佈與預編譯 CLI 執行檔也在規劃中，均不屬於 `v0.3.0-alpha.1`。
 
 ## 查驗結果代表什麼
 

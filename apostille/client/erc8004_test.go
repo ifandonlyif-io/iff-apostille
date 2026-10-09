@@ -17,19 +17,20 @@ func testERC8004ClientRecord(t *testing.T, issuer string) (core.Envelope, string
 }
 
 func testERC8004ClientRecordAt(t *testing.T, issuer string, now time.Time) (core.Envelope, string, ERC8004BindingRecord, *core.Signer) {
+	return testERC8004ClientRecordWith(t, issuer, now, func(t *testing.T) *core.Signer {
+		seed, _, err := core.GenerateKey()
+		require.NoError(t, err)
+		signer, err := core.NewSigner(seed)
+		require.NoError(t, err)
+		return signer
+	})
+}
+
+// testERC8004ClientRecordWith builds a record whose three keys come from newKey:
+// Ed25519 keys give binding profile 0.1, ML-DSA-65 keys give 0.3.
+func testERC8004ClientRecordWith(t *testing.T, issuer string, now time.Time, newKey func(*testing.T) *core.Signer) (core.Envelope, string, ERC8004BindingRecord, *core.Signer) {
 	t.Helper()
-	adminSeed, _, err := core.GenerateKey()
-	require.NoError(t, err)
-	admin, err := core.NewSigner(adminSeed)
-	require.NoError(t, err)
-	agentSeed, _, err := core.GenerateKey()
-	require.NoError(t, err)
-	agent, err := core.NewSigner(agentSeed)
-	require.NoError(t, err)
-	issuerSeed, _, err := core.GenerateKey()
-	require.NoError(t, err)
-	issuerSigner, err := core.NewSigner(issuerSeed)
-	require.NoError(t, err)
+	admin, agent, issuerSigner := newKey(t), newKey(t), newKey(t)
 	now = now.UTC().Truncate(time.Second)
 	reg, err := core.CreateRegistration(admin, agent, issuer, time.Hour, now)
 	require.NoError(t, err)
@@ -144,4 +145,43 @@ func TestERC8004BindingClientRejectsMismatchedIssuerOnRetrieval(t *testing.T) {
 	var problem *APIError
 	require.ErrorAs(t, err, &problem)
 	require.Equal(t, "invalid_binding_response", problem.Code)
+}
+
+func TestERC8004ConfigListsProfiles(t *testing.T) {
+	for name, profiles := range map[string][]string{"older service": nil, "both": core.KnownERC8004Profiles(), "only 0.1": {core.ERC8004Profile}} {
+		t.Run(name, func(t *testing.T) {
+			c, _ := localClient(t, func(w http.ResponseWriter, r *http.Request) {
+				_ = json.NewEncoder(w).Encode(ERC8004Config{Profile: core.ERC8004Profile, Profiles: profiles, Enabled: true, Networks: []ERC8004Network{{ChainID: "8453", RegistryAddress: "0x1111111111111111111111111111111111111111"}}, MaxBindingAgeSeconds: 3600, WalletSupport: "eoa_only"})
+			})
+			config, err := c.ERC8004Config(context.Background())
+			require.NoError(t, err)
+			require.Equal(t, profiles, config.Profiles)
+		})
+	}
+	c, _ := localClient(t, func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(ERC8004Config{Profile: core.ERC8004Profile, Profiles: []string{core.ERC8004Profile, "https://ifandonlyif.io/apostille/profiles/erc8004-binding/0.2"}, Enabled: true, Networks: []ERC8004Network{}, MaxBindingAgeSeconds: 3600, WalletSupport: "eoa_only"})
+	})
+	_, err := c.ERC8004Config(context.Background())
+	var problem *APIError
+	require.ErrorAs(t, err, &problem)
+	require.Equal(t, "invalid_erc8004_config", problem.Code)
+}
+
+func TestERC8004BindingClientVerifiesProfile03Document(t *testing.T) {
+	request, ownerSignature, record, issuerSigner := testERC8004ClientRecordWith(t, testIssuer, time.Now(), func(t *testing.T) *core.Signer {
+		seed, _, err := core.GenerateMLDSAKey()
+		require.NoError(t, err)
+		signer, err := core.NewMLDSASigner(seed)
+		require.NoError(t, err)
+		return signer
+	})
+	require.Equal(t, core.ERC8004Profile03, record.Document.Protocol)
+	_, server := localClient(t, func(w http.ResponseWriter, r *http.Request) { _ = json.NewEncoder(w).Encode(record) })
+	configured, err := New(Config{BaseURL: server.URL + "/api/apostille/v1", Issuer: testIssuer, AllowInsecureLocalhost: true, TrustedKeyIDs: []string{issuerSigner.KeyID()}})
+	require.NoError(t, err)
+	require.NoError(t, configured.SetAccessToken("secret-token"))
+	got, err := configured.CreateERC8004Binding(context.Background(), record.AgentID, request, ownerSignature)
+	require.NoError(t, err)
+	require.Equal(t, "pinned", got.Verification.IssuerTrust)
+	require.Equal(t, core.ERC8004Profile03, got.Verification.Protocol)
 }

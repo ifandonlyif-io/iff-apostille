@@ -13,7 +13,13 @@ export declare const ALGORITHM: "Ed25519";
 export declare const ALGORITHM_03: "ML-DSA-65";
 /** Every Core 0.3 login challenge message starts with this prefix. */
 export declare const LOGIN_PREFIX_03: "iff-apostille/login/0.3\n";
+/** ERC-8004 binding profile 0.1: Core 0.1 registrations, Ed25519. */
 export declare const ERC8004_PROTOCOL: "https://ifandonlyif.io/apostille/profiles/erc8004-binding/0.1";
+/** ERC-8004 binding profile 0.3: Core 0.3 registrations, ML-DSA-65 administrator and issuer signatures. The wallet owner's EIP-191 consent stays secp256k1 and is not post-quantum. */
+export declare const ERC8004_PROTOCOL_03: "https://ifandonlyif.io/apostille/profiles/erc8004-binding/0.3";
+export type ERC8004Profile = typeof ERC8004_PROTOCOL | typeof ERC8004_PROTOCOL_03;
+/** Every binding profile this implementation verifies and signs, oldest first. */
+export declare const KNOWN_ERC8004_PROFILES: readonly ERC8004Profile[];
 
 export type SignedKind =
   | "origin-statement"
@@ -40,7 +46,7 @@ export interface Signature {
 }
 
 export interface ERC8004Envelope<K extends "erc8004-binding-request" | "erc8004-binding"> {
-  protocol: typeof ERC8004_PROTOCOL;
+  protocol: ERC8004Profile;
   kind: K;
   payload: string;
   payload_sha256: string;
@@ -55,7 +61,7 @@ export interface ERC8004Identity {
 }
 
 export interface ERC8004Request extends ERC8004Identity {
-  protocol: typeof ERC8004_PROTOCOL;
+  protocol: ERC8004Profile;
   kind: "erc8004-binding-request";
   issuer: string;
   issuer_key_id: string;
@@ -70,7 +76,8 @@ export interface ERC8004Request extends ERC8004Identity {
 }
 
 export interface ERC8004BindingDocument {
-  protocol: typeof ERC8004_PROTOCOL;
+  /** The binding profile; the snapshot, the request inside it and the registration all belong to it. */
+  protocol: ERC8004Profile;
   binding: ERC8004Envelope<"erc8004-binding">;
   delegation: Envelope<"agent-delegation">;
   acceptance: Envelope<"agent-acceptance">;
@@ -83,7 +90,7 @@ export interface ERC8004VerifyOptions {
 }
 
 export interface ERC8004Verification {
-  protocol: typeof ERC8004_PROTOCOL;
+  protocol: ERC8004Profile;
   artifact_integrity: "valid";
   issuer_trust: "pinned" | "unknown";
   provider_evidence: "issuer_checked";
@@ -262,11 +269,13 @@ export declare function verifyArtifact(result: Verification, bytes: Uint8Array):
 export declare function importKeyFile(file: KeyFile & { protocol: typeof PROTOCOL }): Promise<Ed25519Signer>;
 export declare function importKeyFile(file: KeyFile & { protocol: typeof PROTOCOL_03 }): Promise<MLDSA65Signer>;
 export declare function importKeyFile(file: KeyFile | string): Promise<Signer>;
-/** Generates an Ed25519 key file (protocol 0.1, the default) or, for algorithm "ML-DSA-65", a Core 0.3 key file. */
-export declare function generateKeyFile(options?: { algorithm?: "Ed25519" }): Promise<Omit<KeyFile, "role"> & { protocol: typeof PROTOCOL }>;
-export declare function generateKeyFile(options: { algorithm: "ML-DSA-65" }): Promise<Omit<KeyFile, "role"> & { protocol: typeof PROTOCOL_03 }>;
+/** Generates an ML-DSA-65 key file (protocol 0.3, the default) or, for algorithm "Ed25519", a Core 0.1 key file for deployments that still issue Core 0.1. */
+export declare function generateKeyFile(options?: { algorithm?: "ML-DSA-65" }): Promise<Omit<KeyFile, "role"> & { protocol: typeof PROTOCOL_03 }>;
+export declare function generateKeyFile(options: { algorithm: "Ed25519" }): Promise<Omit<KeyFile, "role"> & { protocol: typeof PROTOCOL }>;
 export declare function generateKeyFile(options: GenerateKeyFileOptions): Promise<Omit<KeyFile, "role">>;
-/** The signing forms take the protocol explicitly and default to Core 0.1. */
+/** A signer's natural Core version: 0.3 for an ML-DSA-65 key, 0.1 for an Ed25519 key. */
+export declare function naturalProtocol(signer: Signer): typeof PROTOCOL | typeof PROTOCOL_03;
+/** The signing forms take the protocol explicitly and default to the signer's natural version (Ed25519 signs Core 0.1, ML-DSA-65 signs Core 0.3). */
 export declare function header<K extends SignedKind>(kind: K, signer: Signer, now?: string | number | Date, identity?: string, protocol?: CoreProtocol): Header<K>;
 export declare function sign<K extends SignedKind>(kind: K, payload: KindPayloadMap[K], signer: Signer, protocol?: CoreProtocol): Promise<Envelope<K>>;
 /** The Core 0.1 login proof: Ed25519 only. */
@@ -283,7 +292,8 @@ export declare function createStatement(bytes: Uint8Array, mediaType: string, ag
 export declare function createProducerStatement(bytes: Uint8Array, mediaType: string, agent: Signer, agentID: string, protocol?: CoreProtocol): Promise<Envelope<"origin-statement">>;
 export declare function createGrant(statement: Envelope<"origin-statement">, registration: AgentRegistration, admin: Signer, audience: string, visibility: Visibility, protocol?: CoreProtocol): Promise<Envelope<"publication-grant">>;
 export declare function issueBundle(bundle: Bundle, issuerSigner: Signer, issuer: string, at?: Date): Promise<Bundle>;
-export declare function createERC8004Request(admin: Ed25519Signer, registration: AgentRegistration, identity: ERC8004Identity, audience: string, now?: string | number | Date | typeof Date): Promise<ERC8004Envelope<"erc8004-binding-request">>;
+/** The binding profile is that of the registration's Core version (0.1 gives binding 0.1, 0.3 gives binding 0.3); a Core 0.2 registration has none. The administrator's key must be of that profile's algorithm. */
+export declare function createERC8004Request(admin: Signer, registration: AgentRegistration, identity: ERC8004Identity, audience: string, now?: string | number | Date | typeof Date): Promise<ERC8004Envelope<"erc8004-binding-request">>;
 export declare function erc8004OwnerMessage(request: ERC8004Envelope<"erc8004-binding-request">): Promise<string>;
 export declare function verifyERC8004Binding(document: string | ERC8004BindingDocument, options?: ERC8004VerifyOptions): Promise<ERC8004Verification>;
 
