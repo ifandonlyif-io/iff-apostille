@@ -175,6 +175,9 @@ h1 { max-width: 13ch; margin: 0; font-size: clamp(2.8rem, 6.3vw, 6.4rem); line-h
 .field-grid > label { min-width: 0; }
 label > span, .visibility-field legend { display: block; margin-bottom: .45rem; color: var(--steel-soft); font-size: .78rem; font-weight: 600; }
 input[type="text"], input[type="url"], input:not([type]) , input[type="datetime-local"], .field-grid select { width: 100%; min-height: 44px; padding: .7rem .8rem; color: #edf4f9; background: #0e1b29; border: 1px solid var(--line); border-radius: .15rem; }
+.algorithm-field { display: block; margin-top: 1.2rem; }
+.action-row .algorithm-field { margin-top: 0; }
+.algorithm-field select { min-height: 44px; max-width: 100%; padding: .7rem .8rem; color: #edf4f9; background: #0e1b29; border: 1px solid var(--line); border-radius: .15rem; }
 .choice-line { display: flex; gap: .65rem; align-items: flex-start; }
 .choice-line span { margin: 0; }
 .choice-line input { margin-top: .2rem; accent-color: var(--teal); }

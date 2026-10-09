@@ -3,10 +3,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { formatBytes, localizedPath, publicCertificatePath, quotaErrorMessage, shouldFetch, validateTrustPolicy, verificationHeadline } from "./apostille-page.mjs";
+import { formatBytes, isPostQuantum, localizedPath, protocolSummary, publicCertificatePath, quotaErrorMessage, shouldFetch, validateTrustPolicy, verificationHeadline } from "./apostille-page.mjs";
 import * as apostillePage from "./apostille-page.mjs";
 import { message, messages } from "./apostille-messages.mjs";
-import { b64, canonical, createRegistration, envelopeDigest, fingerprint, generateKeyFile, hash, importKeyFile, verifyEnvelope } from "./apostille-core.mjs";
+import { PROTOCOL, PROTOCOL_02, PROTOCOL_03, b64, canonical, createProducerStatement, createRegistration, envelopeDigest, fingerprint, generateKeyFile, hash, importKeyFile, issueBundle, verifyArtifact, verifyBundle, verifyEnvelope } from "./apostille-core.mjs";
 import { ERC8004_PROTOCOL, createERC8004Request, verifyERC8004Binding } from "./apostille-erc8004.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -855,4 +855,164 @@ test("asset lists name every module and vendored file the page imports, and CSP 
     const manifest = JSON.parse(await readFile(join(here, "../sdk/apostille-js/package.json"), "utf8"));
     assert.ok(manifest.files.includes("spec/schema-0.3.json") && manifest.files.includes("dist/"));
     assert.deepEqual(manifest.files.filter((name) => /cases|hedged|wycheproof/.test(name)), []);
+});
+
+// Core 0.3 (ML-DSA-65) in the browser: key choice, signing disclosure, hosted notice, verifier policy.
+const downloaded = async (ui, index) => JSON.parse(await ui.downloads[index].blob.text());
+const noHostedWork = (ui) => ui.requests.filter((request) => !["/status", "/erc8004/config"].includes(request.path));
+
+test("key algorithm choice offers Ed25519 by default and ML-DSA-65, and every new key has four locales", () => {
+    for (const id of ["admin-algorithm", "agent-algorithm"]) {
+        const select = html.match(new RegExp(`<select id="${id}">(.*?)</select>`))[1];
+        assert.deepEqual([...select.matchAll(/value="([^"]+)"/g)].map((match) => match[1]), ["Ed25519", "ML-DSA-65"], "Ed25519 is first and so the default");
+    }
+    for (const key of ["keyAlgorithm", "algEd25519", "algMLDSA", "mldsaDisclosure", "hostedPending", "requirePQ", "requirePQBinding", "protocolPostQuantum", "protocolClassical"]) {
+        for (const locale of Object.keys(messages)) assert.ok(Object.hasOwn(messages[locale], key) && messages[locale][key], `${locale}:${key}`);
+    }
+    assert.match(message("en", "mldsaDisclosure"), /@noble\/post-quantum.*not independently audited.*constant-time.*Go standard library/);
+    assert.match(html, /id="verify-require-03" type="checkbox"/);
+    assert.doesNotMatch(html.match(/id="verify-require-03"[^>]*>/)[0], /checked/, "post-quantum policy is off by default");
+});
+
+test("protocol summaries call only Core 0.3 post-quantum", () => {
+    assert.deepEqual(protocolSummary(PROTOCOL), { version: "0.1", algorithm: "Ed25519", postQuantum: false });
+    assert.deepEqual(protocolSummary(PROTOCOL_02), { version: "0.2", algorithm: "Ed25519", postQuantum: false });
+    assert.deepEqual(protocolSummary(PROTOCOL_03), { version: "0.3", algorithm: "ML-DSA-65", postQuantum: true });
+    assert.equal(protocolSummary(ERC8004_PROTOCOL), null);
+    assert.equal(isPostQuantum({ algorithm: "ML-DSA-65" }), true);
+    assert.equal(isPostQuantum({ algorithm: "Ed25519" }), false);
+    assert.equal(isPostQuantum(null), false);
+});
+
+test("default Ed25519 key generation and signing are unchanged and show no ML-DSA-65 text", async (t) => {
+    const ui = await consoleHarness(t);
+    assert.equal((await downloaded(ui, 0)).protocol, PROTOCOL, "the administrator key file is Core 0.1");
+    const index = ui.downloads.findIndex((item) => item.name === "apostille-statement.json");
+    assert.ok(index > 0);
+    assert.equal((await downloaded(ui, index)).protocol, PROTOCOL);
+    for (const id of ["admin-mldsa-note", "admin-hosted-note", "agent-mldsa-note", "agent-hosted-note", "issue-mldsa-note", "issue-hosted-note"]) assert.equal(ui.node(id).hidden, true, id);
+    assert.equal(ui.node("admin-login").disabled, false);
+    assert.equal(ui.node("certificate-submit").disabled, true, "needs the grant, as before");
+});
+
+test("choosing ML-DSA-65 shows the browser signing disclosure before a key exists", async (t) => {
+    const ui = await consoleHarness(t, { empty: true });
+    assert.equal(ui.node("admin-mldsa-note").hidden, true);
+    ui.node("admin-algorithm").value = "ML-DSA-65";
+    await ui.node("admin-algorithm").dispatch("change");
+    assert.equal(ui.node("admin-mldsa-note").hidden, false);
+    ui.node("admin-algorithm").value = "Ed25519";
+    await ui.node("admin-algorithm").dispatch("change");
+    assert.equal(ui.node("admin-mldsa-note").hidden, true);
+    ui.node("agent-algorithm").value = "ML-DSA-65";
+    await ui.node("agent-algorithm").dispatch("change");
+    assert.equal(ui.node("agent-mldsa-note").hidden, false);
+});
+
+test("an ML-DSA-65 key signs Core 0.3 locally and every hosted action stays disabled", async (t) => {
+    const ui = await consoleHarness(t, { empty: true });
+    ui.node("admin-algorithm").value = "ML-DSA-65";
+    await ui.node("admin-generate").dispatch("click");
+    const adminFile = await downloaded(ui, 0);
+    assert.equal(adminFile.protocol, PROTOCOL_03);
+    assert.equal((await importKeyFile(adminFile)).algorithm, "ML-DSA-65");
+    assert.equal(ui.node("admin-readout").hidden, false);
+    assert.equal(ui.node("admin-login").disabled, true, "hosted sign-in is pending for Core 0.3");
+    assert.equal(ui.node("admin-hosted-note").hidden, false);
+    assert.equal(ui.node("admin-mldsa-note").hidden, false);
+    assert.equal(ui.node("workspace-panels").hidden, false, "local signing panels open without hosted sign-in");
+    assert.equal(ui.node("profile-panel").hidden, true, "the hosted profile does not");
+
+    ui.node("agent-algorithm").value = "ML-DSA-65";
+    await ui.node("agent-generate").dispatch("click");
+    assert.equal((await downloaded(ui, 1)).protocol, PROTOCOL_03);
+    assert.equal(ui.node("agent-mldsa-note").hidden, false);
+    assert.equal(ui.node("agent-hosted-note").hidden, false);
+    assert.equal(ui.node("agent-register").disabled, true);
+
+    const bytes = new TextEncoder().encode("original");
+    ui.node("artifact-input").files = [{ name: "original.txt", size: bytes.length, type: "text/plain", arrayBuffer: async () => bytes.buffer }];
+    await ui.node("artifact-input").dispatch("change");
+    assert.equal(ui.node("issue-mldsa-note").hidden, false);
+    assert.equal(ui.node("issue-hosted-note").hidden, false);
+    assert.equal(ui.node("statement-create").disabled, false);
+    await ui.node("statement-create").dispatch("click");
+    const bundle = await downloaded(ui, 2);
+    assert.equal(ui.downloads[2].name, "apostille-bundle.json");
+    assert.deepEqual(Object.keys(bundle).sort(), ["acceptance", "certificate", "delegation", "protocol", "statement"]);
+    assert.equal(bundle.statement.signature.algorithm, "ML-DSA-65");
+    await verifyEnvelope(bundle.statement, "origin-statement");
+    // Sign, download, verify: the file is accepted by the offline verifier as it is.
+    const verified = await verifyBundle(bundle, { acceptedProtocols: [PROTOCOL_03] });
+    assert.equal(verified.protocol, PROTOCOL_03);
+    assert.equal(verified.certificate_scope, "producer_only");
+    assert.equal(await verifyArtifact(verified, bytes), true);
+    assert.equal(ui.node("grant-create").disabled, true);
+    assert.equal(ui.node("certificate-submit").disabled, true);
+    assert.deepEqual(noHostedWork(ui), [], "no hosted login, registration or submission request");
+});
+
+test("an ML-DSA-65 agent key cannot use hosted registration even with an Ed25519 session", async (t) => {
+    const ui = await consoleHarness(t);
+    ui.node("agent-algorithm").value = "ML-DSA-65";
+    await ui.node("agent-generate").dispatch("click");
+    assert.equal(ui.node("agent-register").disabled, true);
+    assert.equal(ui.node("certificate-submit").disabled, true);
+    assert.equal(ui.node("grant-create").disabled, true);
+    assert.equal(ui.node("agent-hosted-note").hidden, false);
+});
+
+async function verifierBundle(protocol, signerOptions) {
+    const agent = await importKeyFile(await generateKeyFile(signerOptions)), issuer = await importKeyFile(await generateKeyFile(signerOptions));
+    const statement = await createProducerStatement(new TextEncoder().encode("original"), "text/plain", agent, crypto.randomUUID(), protocol);
+    return issueBundle({ protocol, statement, delegation: null, acceptance: null, certificate: null }, issuer, "https://issuer.example/apostille");
+}
+async function submitVerifier(ui, bundle, { requirePQ = false } = {}) {
+    const raw = new TextEncoder().encode(JSON.stringify(bundle));
+    ui.node("verify-bundle").files = [{ size: raw.length, arrayBuffer: async () => raw.buffer }];
+    ui.node("verify-time").value = new Date().toISOString();
+    ui.node("verify-require-03").checked = requirePQ;
+    await ui.node("verify-form").dispatch("submit");
+}
+
+test("verifier shows the protocol version and never describes Core 0.1 or 0.2 as post-quantum", async (t) => {
+    const ui = await consoleHarness(t, { empty: true, mode: "verify" });
+    for (const [protocol, label] of [[PROTOCOL, "0.1 · Ed25519"], [PROTOCOL_02, "0.2 · Ed25519"]]) {
+        await submitVerifier(ui, await verifierBundle(protocol));
+        assert.equal(ui.node("verify-status").textContent, "");
+        assert.equal(ui.node("result-protocol").textContent, label);
+        assert.equal(ui.node("result-protocol-note").textContent, message("en", "protocolClassical"));
+        assert.doesNotMatch(ui.node("result-protocol").textContent, /ML-DSA/);
+    }
+    await submitVerifier(ui, await verifierBundle(PROTOCOL_03, { algorithm: "ML-DSA-65" }));
+    assert.equal(ui.node("result-protocol").textContent, "0.3 · ML-DSA-65");
+    assert.equal(ui.node("result-protocol-note").textContent, message("en", "protocolPostQuantum"));
+    assert.equal(ui.requests.length, 0);
+});
+
+test("the post-quantum receiver option accepts only Core 0.3 and is off by default", async (t) => {
+    const ui = await consoleHarness(t, { empty: true, mode: "verify" });
+    const classic = await verifierBundle(PROTOCOL), post = await verifierBundle(PROTOCOL_03, { algorithm: "ML-DSA-65" });
+    await submitVerifier(ui, classic, { requirePQ: true });
+    assert.match(ui.node("verify-status").textContent, /not accepted by the receiver's policy/);
+    assert.equal(ui.node("verification-result").hidden, true);
+    await submitVerifier(ui, await verifierBundle(PROTOCOL_02), { requirePQ: true });
+    assert.match(ui.node("verify-status").textContent, /not accepted by the receiver's policy/);
+    await submitVerifier(ui, post, { requirePQ: true });
+    assert.equal(ui.node("verify-status").textContent, "");
+    assert.equal(ui.node("result-protocol").textContent, "0.3 · ML-DSA-65");
+    await submitVerifier(ui, classic);
+    assert.equal(ui.node("verify-status").textContent, "", "all known versions by default");
+    assert.match(page, /options\.acceptedProtocols = \[PROTOCOL_03\]/);
+});
+
+test("the post-quantum receiver option does not pass an Ed25519 ERC-8004 snapshot", async (t) => {
+    const ui = await consoleHarness(t, { empty: true, mode: "verify" });
+    const raw = new TextEncoder().encode(JSON.stringify({ protocol: ERC8004_PROTOCOL }));
+    ui.node("verify-bundle").files = [{ size: raw.length, arrayBuffer: async () => raw.buffer }];
+    ui.node("verify-time").value = new Date().toISOString();
+    ui.node("verify-require-03").checked = true;
+    await ui.node("verify-form").dispatch("submit");
+    assert.match(ui.node("verify-status").textContent, /Post-quantum signatures are required/);
+    assert.equal(ui.node("verification-result").hidden, true);
 });

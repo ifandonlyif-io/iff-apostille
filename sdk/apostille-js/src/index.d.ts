@@ -259,6 +259,8 @@ export declare function verifyEnvelope(envelope: Envelope, expectedKind?: "", op
 export declare function verifyBundle(input: string | Bundle, options?: VerifyOptions): Promise<Verification>;
 export declare function verifyArtifact(result: Verification, bytes: Uint8Array): Promise<boolean>;
 /** Accepts a key file object or its text (at most MAX_KEY_FILE_BYTES); the derived public key and key ID must match the stored ones. */
+export declare function importKeyFile(file: KeyFile & { protocol: typeof PROTOCOL }): Promise<Ed25519Signer>;
+export declare function importKeyFile(file: KeyFile & { protocol: typeof PROTOCOL_03 }): Promise<MLDSA65Signer>;
 export declare function importKeyFile(file: KeyFile | string): Promise<Signer>;
 /** Generates an Ed25519 key file (protocol 0.1, the default) or, for algorithm "ML-DSA-65", a Core 0.3 key file. */
 export declare function generateKeyFile(options?: { algorithm?: "Ed25519" }): Promise<Omit<KeyFile, "role"> & { protocol: typeof PROTOCOL }>;

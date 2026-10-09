@@ -14,6 +14,7 @@ import {
   importKeyFile,
   issueBundle,
   verifyArtifact,
+  signLogin,
   signLogin03,
   validIssuer02,
   verifyBundle,
@@ -117,3 +118,20 @@ async function hostedSurface(): Promise<void> {
 void offlineSurface;
 void hostedSurface;
 void verification;
+
+// Generate, import, then sign in or sign: the key file protocol keeps the
+// signer type, so no cast is needed for either algorithm.
+async function keyFileSignerTypes(): Promise<void> {
+  const ed = await importKeyFile(await generateKeyFile());
+  const edSignerFromFile: Ed25519Signer = ed;
+  const edLogin: Promise<string> = signLogin("iff-apostille/login/0.1\n", ed, "https://issuer.example/apostille");
+  const ml = await importKeyFile(await generateKeyFile({ algorithm: "ML-DSA-65" }));
+  const mlSignerFromFile: MLDSA65Signer = ml;
+  const mlLogin: Promise<string> = signLogin03("iff-apostille/login/0.3\n", ml);
+  // @ts-expect-error an ML-DSA-65 key file never yields an Ed25519 signer
+  void signLogin("iff-apostille/login/0.1\n", ml, "https://issuer.example/apostille");
+  // A key file of unknown protocol (text, or a parsed object) is the union.
+  const unknown: Signer = await importKeyFile("{}");
+  void [edSignerFromFile, edLogin, mlSignerFromFile, mlLogin, unknown];
+}
+void keyFileSignerTypes;

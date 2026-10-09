@@ -119,17 +119,20 @@
 
             <section class="console-card" id="auth-panel">
                 <div class="card-heading"><span class="step-token">A</span><div><h2 data-i18n="adminKeyTitle">Administrator key</h2><p data-i18n="adminKeyBody">Generate a new key or import your JSON backup. Nothing is placed in browser storage.</p></div></div>
+                <label class="algorithm-field"><span data-i18n="keyAlgorithm">Key algorithm</span><select id="admin-algorithm"><option value="Ed25519" data-i18n="algEd25519">Ed25519 (Core 0.1)</option><option value="ML-DSA-65" data-i18n="algMLDSA">ML-DSA-65 (Core 0.3, post-quantum)</option></select></label>
                 <div class="action-row">
                     <button class="button primary" id="admin-generate" type="button" data-i18n="generateAdmin">Generate and download key</button>
                     <label class="file-button"><span data-i18n="importAdmin">Import key backup</span><input id="admin-import" type="file" accept="application/json,.json"></label>
                     <button class="button secondary" id="admin-login" type="button" disabled data-i18n="login">Register or sign in</button>
                 </div>
                 <div class="key-readout" id="admin-readout" hidden><span data-i18n="loadedKey">Loaded key</span><code id="admin-key-id"></code></div>
+                <p class="revocation-note" id="admin-mldsa-note" hidden data-i18n="mldsaDisclosure">ML-DSA-65 in the browser uses the vendored @noble/post-quantum library, which states that it is not independently audited and does not claim constant-time signing. For administrator keys, the command-line tool (Go standard library) is the recommended path.</p>
+                <p class="revocation-note" id="admin-hosted-note" hidden data-i18n="hostedPending">The hosted service does not accept Core 0.3 yet, so sign-in, registration and submission are unavailable for ML-DSA-65 keys. Local signing and offline verification still work.</p>
                 <p class="form-status" id="auth-status" role="status" aria-live="polite"></p>
             </section>
 
             <div id="workspace-panels" hidden>
-                <section class="console-card">
+                <section class="console-card" id="profile-panel">
                     <div class="card-heading"><span class="step-token">B</span><div><h2 data-i18n="profileTitle">Workspace profile</h2><p data-i18n="profileBody">Publishing the profile exposes only its public ID, name, and creation time. It does not publish keys or certificates.</p></div></div>
                     <form id="workspace-form" class="field-grid">
                         <label><span data-i18n="workspaceName">Workspace name</span><input id="workspace-name" maxlength="120" required></label>
@@ -145,12 +148,15 @@
                     <div class="field-grid two">
                         <label><span data-i18n="agentName">Agent name</span><input id="agent-name" maxlength="120" placeholder="Release agent"></label>
                         <div class="action-row compact">
+                            <label class="algorithm-field"><span data-i18n="keyAlgorithm">Key algorithm</span><select id="agent-algorithm"><option value="Ed25519" data-i18n="algEd25519">Ed25519 (Core 0.1)</option><option value="ML-DSA-65" data-i18n="algMLDSA">ML-DSA-65 (Core 0.3, post-quantum)</option></select></label>
                             <button class="button secondary" id="agent-generate" type="button" data-i18n="generateAgent">Generate and download agent key</button>
                             <label class="file-button"><span data-i18n="importAgent">Import existing agent key</span><input id="agent-import" type="file" accept="application/json,.json"></label>
                         </div>
                     </div>
                     <div class="key-readout" id="agent-readout" hidden><span data-i18n="loadedAgentKey">Loaded agent key</span><code id="agent-key-id"></code></div>
                     <button class="button primary" id="agent-register" type="button" disabled data-i18n="registerAgent">Sign delegation and register agent</button>
+                    <p class="revocation-note" id="agent-mldsa-note" hidden data-i18n="mldsaDisclosure">ML-DSA-65 in the browser uses the vendored @noble/post-quantum library, which states that it is not independently audited and does not claim constant-time signing. For administrator keys, the command-line tool (Go standard library) is the recommended path.</p>
+                    <p class="revocation-note" id="agent-hosted-note" hidden data-i18n="hostedPending">The hosted service does not accept Core 0.3 yet, so sign-in, registration and submission are unavailable for ML-DSA-65 keys. Local signing and offline verification still work.</p>
                     <p class="form-status" id="agent-status" role="status" aria-live="polite"></p>
                     <div class="record-list" id="agent-list"></div>
                 </section>
@@ -181,6 +187,8 @@
                         <button class="button secondary" id="grant-create" type="button" disabled data-i18n="createGrant">Approve and download grant</button>
                         <button class="button primary" id="certificate-submit" type="button" disabled data-i18n="issueCertificate">Issue certificate</button>
                     </div>
+                    <p class="revocation-note" id="issue-mldsa-note" hidden data-i18n="mldsaDisclosure">ML-DSA-65 in the browser uses the vendored @noble/post-quantum library, which states that it is not independently audited and does not claim constant-time signing. For administrator keys, the command-line tool (Go standard library) is the recommended path.</p>
+                    <p class="revocation-note" id="issue-hosted-note" hidden data-i18n="hostedPending">The hosted service does not accept Core 0.3 yet, so sign-in, registration and submission are unavailable for ML-DSA-65 keys. Local signing and offline verification still work.</p>
                     <p class="form-status" id="issue-status" role="status" aria-live="polite"></p>
                     <div class="record-list" id="certificate-list"></div>
                 </section>
@@ -189,7 +197,7 @@
 
         <section class="view verify-view" data-view="verify" aria-labelledby="verify-title" hidden>
             <div class="page-heading"><p class="eyebrow" data-i18n="verifyEyebrow">Local verifier</p><h1 id="verify-title" data-i18n="verifyTitle">Inspect every claim before you trust the issuer.</h1><p data-i18n="verifyLede">Bundle, key policy, artifact comparison, and evaluation time stay in this browser. Offline mode never fetches status or a key directory.</p></div>
-            <p data-i18n="verifyToolsBoundary" class="profile-note">This browser verifier and its offline ZIP support Core 0.1 bundles and ERC-8004 binding snapshots. ZK budget proofs require the local Go SDK or CLI; the browser, JavaScript SDK and hosted API do not generate or verify them.</p>
+            <p data-i18n="verifyToolsBoundary" class="profile-note">This browser verifier and its offline ZIP support Core 0.1, 0.2 and 0.3 bundles and ERC-8004 binding snapshots. ZK budget proofs require the local Go SDK or CLI; the browser, JavaScript SDK and hosted API do not generate or verify them.</p>
             <form id="verify-form" class="verify-shell">
                 <div class="verify-inputs">
                     <label class="drop-field"><span data-i18n="bundleFile">Certificate bundle or ERC-8004 binding JSON</span><input id="verify-bundle" type="file" accept="application/json,.json" required></label>
@@ -197,13 +205,15 @@
                     <label><span data-i18n="expectedIssuer">Expected issuer · exact URI</span><input id="verify-issuer" type="text" inputmode="url" autocomplete="off" placeholder="https://issuer.example/apostille"></label>
                     <label><span data-i18n="trustedKey">Trusted key pin · full fingerprint</span><input id="verify-key" type="text" autocomplete="off" spellcheck="false" placeholder="sha256:…"></label>
                     <label><span data-i18n="evaluationTime">Evaluation time · your local clock</span><input id="verify-time" type="datetime-local" step="1"></label>
+                    <label class="choice-line"><input id="verify-require-03" type="checkbox"><span data-i18n="requirePQ">Require post-quantum signatures (Core 0.3 only)</span></label>
                     <button class="button primary" type="submit" data-i18n="verifyButton">Verify locally</button>
                     <p class="form-status" id="verify-status" role="status" aria-live="polite"></p>
                 </div>
                 <div class="verification-result" id="verification-result" hidden tabindex="-1">
                     <div class="result-head"><div><p class="eyebrow" data-i18n="resultEyebrow">Verification result</p><h2 id="result-title"></h2></div><span class="result-badge" id="result-badge"></span></div>
                     <div class="check-list" id="check-list"></div>
-                    <dl class="result-meta"><div><dt id="result-id-label">certificate_id</dt><dd><code id="result-cert-id"></code></dd></div><div><dt>issuer</dt><dd><code id="result-issuer"></code></dd></div><div><dt>issuer_key_id</dt><dd><code id="result-key"></code></dd></div><div><dt id="result-digest-label">artifact_sha256</dt><dd><code id="result-digest"></code></dd></div></dl>
+                    <dl class="result-meta"><div><dt>protocol</dt><dd><code id="result-protocol"></code></dd></div><div><dt id="result-id-label">certificate_id</dt><dd><code id="result-cert-id"></code></dd></div><div><dt>issuer</dt><dd><code id="result-issuer"></code></dd></div><div><dt>issuer_key_id</dt><dd><code id="result-key"></code></dd></div><div><dt id="result-digest-label">artifact_sha256</dt><dd><code id="result-digest"></code></dd></div></dl>
+                    <p class="revocation-note" id="result-protocol-note"></p>
                     <p class="revocation-note" id="result-note" data-i18n="revocationNote">Offline verification cannot know whether a key or delegation was revoked after this bundle was created.</p>
                 </div>
             </form>
@@ -253,7 +263,7 @@
   --key-id sha256:… --require-trusted</code></pre></div>
         </section>
 
-        <section class="view info-view" data-view="downloads" aria-labelledby="downloads-title" hidden><div class="page-heading"><p class="eyebrow" data-i18n="downloadsEyebrow">Take verification with you</p><h1 id="downloads-title" data-i18n="downloadsTitle">A verifier with no service dependency.</h1><p data-i18n="downloadsLede">Download the HTML, JavaScript core, schema, specification, and test vectors. Serve the folder on localhost; it makes no Internet requests.</p></div><p data-i18n="verifyToolsBoundary" class="profile-note">This browser verifier and its offline ZIP support Core 0.1 bundles and ERC-8004 binding snapshots. ZK budget proofs require the local Go SDK or CLI; the browser, JavaScript SDK and hosted API do not generate or verify them.</p><a class="download-block" href="/apostille/downloads/verifier.zip"><span>ZIP · draft 0.1</span><strong data-i18n="downloadKit">Download offline verifier</strong><small data-i18n="downloadTrust">Bring the issuer URI and key fingerprint from an independent source.</small></a></section>
+        <section class="view info-view" data-view="downloads" aria-labelledby="downloads-title" hidden><div class="page-heading"><p class="eyebrow" data-i18n="downloadsEyebrow">Take verification with you</p><h1 id="downloads-title" data-i18n="downloadsTitle">A verifier with no service dependency.</h1><p data-i18n="downloadsLede">Download the HTML, JavaScript core, schema, specification, and test vectors. Serve the folder on localhost; it makes no Internet requests.</p></div><p data-i18n="verifyToolsBoundary" class="profile-note">This browser verifier and its offline ZIP support Core 0.1, 0.2 and 0.3 bundles and ERC-8004 binding snapshots. ZK budget proofs require the local Go SDK or CLI; the browser, JavaScript SDK and hosted API do not generate or verify them.</p><a class="download-block" href="/apostille/downloads/verifier.zip"><span>ZIP · draft 0.1</span><strong data-i18n="downloadKit">Download offline verifier</strong><small data-i18n="downloadTrust">Bring the issuer URI and key fingerprint from an independent source.</small></a></section>
 
         <section class="view info-view" data-view="keys" aria-labelledby="keys-title" hidden><div class="page-heading"><p class="eyebrow" data-i18n="keysEyebrow">Issuer key directory</p><h1 id="keys-title" data-i18n="keysTitle">A directory is a lookup, not a trust root.</h1><p data-i18n="keysLede">Compare a key fingerprint with an independently obtained policy before accepting it.</p></div><div class="key-directory" id="key-directory"><p data-i18n="loadingKeys">Loading current keys…</p></div></section>
 

@@ -1,7 +1,10 @@
 import {
+    ALGORITHM_03,
     MAX_INPUT_BYTES,
+    PROTOCOL_03,
     canonical,
     createGrant,
+    createProducerStatement,
     createRegistration,
     createStatement,
     decodeBytes,
@@ -15,7 +18,8 @@ import {
     verifyBundle,
 } from "./apostille-core.mjs";
 import { ERC8004_PROTOCOL, createERC8004Request, erc8004OwnerMessage, verifyERC8004Binding } from "./apostille-erc8004.mjs";
-import { message, messages } from "./apostille-messages.mjs?v=20260914-profiles-1";
+import { profileFor } from "./apostille-profile.mjs";
+import { message, messages } from "./apostille-messages.mjs?v=20261009-core03-2";
 import { DEFAULT_TIMEOUT_MS, MAX_RESPONSE_BYTES } from "./apostille-http.mjs";
 
 export const MAX_ARTIFACT_BYTES = 64 * 1024 * 1024;
@@ -63,6 +67,16 @@ export function verificationHeadline(result, artifactMatch) {
     if (result.issuer_trust === "accepted_by_policy") return "pinned";
     return "untrusted";
 }
+
+// The protocol version and signature algorithm of a verified Core protocol, or null for another
+// profile. Only Core 0.3 signatures are post-quantum; the rest of the bundle is unchanged.
+export function protocolSummary(protocol) {
+    const profile = profileFor(protocol);
+    return profile ? { version: profile.domain, algorithm: profile.algorithm, postQuantum: profile.algorithm === ALGORITHM_03 } : null;
+}
+
+// A signer made from an ML-DSA-65 key file; the hosted service does not accept Core 0.3 yet.
+export const isPostQuantum = (signer) => signer?.algorithm === ALGORITHM_03;
 
 class APIRequestError extends Error {}
 
@@ -232,13 +246,29 @@ function initialize() {
     }
 
     function updateSignerButtons() {
-        if (element("admin-login")) element("admin-login").disabled = !state.adminKey;
-        if (element("agent-register")) element("agent-register").disabled = !(state.adminKey && state.agentKey && state.token);
-        const canSign = Boolean(state.agentKey && state.registration && state.artifact);
+        const hosted = !isPostQuantum(state.adminKey) && !isPostQuantum(state.agentKey);
+        if (element("admin-login")) element("admin-login").disabled = !state.adminKey || isPostQuantum(state.adminKey);
+        if (element("agent-register")) element("agent-register").disabled = !(state.adminKey && state.agentKey && state.token && hosted);
+        // An ML-DSA-65 agent key signs a Core 0.3 statement locally, without a hosted registration.
+        const canSign = Boolean(state.agentKey && state.artifact && (isPostQuantum(state.agentKey) || state.registration));
         if (element("statement-create")) element("statement-create").disabled = !canSign;
-        if (element("grant-create")) element("grant-create").disabled = !(state.statement && state.adminKey);
+        if (element("grant-create")) element("grant-create").disabled = !(state.statement && state.adminKey && state.registration && hosted);
         if (element("certificate-submit")) element("certificate-submit").disabled = !canSubmit();
+        updateKeyNotes();
         updateERC8004Buttons();
+    }
+
+    // The signing disclosure applies wherever an ML-DSA-65 key is chosen, generated or used; the
+    // hosted notice wherever a loaded ML-DSA-65 key meets an action the hosted service cannot take.
+    function updateKeyNotes() {
+        const choice = (id) => element(id)?.value === ALGORITHM_03;
+        const show = (id, visible) => { if (element(id)) element(id).hidden = !visible; };
+        show("admin-mldsa-note", isPostQuantum(state.adminKey) || choice("admin-algorithm"));
+        show("admin-hosted-note", isPostQuantum(state.adminKey));
+        show("agent-mldsa-note", isPostQuantum(state.agentKey) || choice("agent-algorithm"));
+        show("agent-hosted-note", isPostQuantum(state.agentKey) || isPostQuantum(state.adminKey));
+        show("issue-mldsa-note", isPostQuantum(state.agentKey));
+        show("issue-hosted-note", isPostQuantum(state.agentKey) || isPostQuantum(state.adminKey));
     }
 
     function selectedVisibility() {
@@ -246,7 +276,7 @@ function initialize() {
     }
 
     function canSubmit() {
-        return Boolean(state.statement && state.grant && state.token && state.grantVisibility === selectedVisibility());
+        return Boolean(!isPostQuantum(state.agentKey) && !isPostQuantum(state.adminKey) && state.statement && state.grant && state.token && state.grantVisibility === selectedVisibility());
     }
 
     function clearAuthenticatedState({ preserveInputs = false } = {}) {
@@ -301,6 +331,11 @@ function initialize() {
             if (downloadName) downloadJSON(downloadName, keyBackup(file));
             element("admin-key-id").textContent = signer.keyID;
             element("admin-readout").hidden = false;
+            // Without hosted sign-in the signing panels open directly; the hosted-only profile stays closed.
+            if (isPostQuantum(signer)) {
+                element("workspace-panels").hidden = false;
+                if (element("profile-panel")) element("profile-panel").hidden = true;
+            }
             setStatus("auth-status", t(status));
             updateSignerButtons();
         } catch (error) { if (revision === adminReadRevision) setStatus("auth-status", error.message, true); }
@@ -340,6 +375,7 @@ function initialize() {
         element("workspace-name").value = state.workspace.name || "";
         element("workspace-public").checked = Boolean(state.workspace.is_public);
         element("workspace-panels").hidden = false;
+        if (element("profile-panel")) element("profile-panel").hidden = false;
         renderProfileLink();
         renderAgents();
         renderERC8004Agents();
@@ -510,7 +546,11 @@ function initialize() {
         });
     }
 
-    element("admin-generate")?.addEventListener("click", () => replaceAdminKey(generateKeyFile, "keyGenerated", "apostille-admin-key.json"));
+    // An unset or empty choice generates the default Ed25519 key.
+    const chosenAlgorithm = (id) => element(id)?.value || undefined;
+    element("admin-generate")?.addEventListener("click", () => replaceAdminKey(() => generateKeyFile({ algorithm: chosenAlgorithm("admin-algorithm") }), "keyGenerated", "apostille-admin-key.json"));
+    element("admin-algorithm")?.addEventListener("change", updateKeyNotes);
+    element("agent-algorithm")?.addEventListener("change", updateKeyNotes);
 
     element("admin-import")?.addEventListener("change", (event) => {
         const file = event.target.files?.[0];
@@ -557,7 +597,7 @@ function initialize() {
     element("agent-generate")?.addEventListener("click", async () => {
         const revision = sessionRevision;
         try {
-            const generated = keyBackup(await generateKeyFile());
+            const generated = keyBackup(await generateKeyFile({ algorithm: chosenAlgorithm("agent-algorithm") }));
             const signer = await importKeyFile(generated);
             if (revision !== sessionRevision) return;
             clearSignedDraft();
@@ -683,11 +723,24 @@ function initialize() {
         clearSignedDraft();
         const revision = draftRevision;
         try {
-            const statement = await createStatement(state.artifact.bytes, state.artifact.mediaType, state.agentKey, state.registration);
+            const { agentKey, artifact } = state;
+            // An ML-DSA-65 key signs Core 0.3; an Ed25519 key keeps the default Core 0.1 form.
+            const postQuantum = isPostQuantum(agentKey);
+            const statement = postQuantum
+                ? await createProducerStatement(artifact.bytes, artifact.mediaType, agentKey, crypto.randomUUID(), PROTOCOL_03)
+                : await createStatement(artifact.bytes, artifact.mediaType, agentKey, state.registration);
             if (revision !== draftRevision) return;
             state.statement = statement;
-            downloadJSON("apostille-statement.json", state.statement);
-            setStatus("issue-status", t("statementReady")); updateSignerButtons();
+            if (postQuantum) {
+                // No hosted issuance exists for Core 0.3 yet, so the local result is a
+                // producer-only bundle that the offline verifier accepts as it is.
+                downloadJSON("apostille-bundle.json", { protocol: PROTOCOL_03, statement, delegation: null, acceptance: null, certificate: null });
+                setStatus("issue-status", t("producerBundleReady"));
+            } else {
+                downloadJSON("apostille-statement.json", state.statement);
+                setStatus("issue-status", t("statementReady"));
+            }
+            updateSignerButtons();
         } catch (error) { if (revision === draftRevision) setStatus("issue-status", error.message, true); }
     });
 
@@ -709,6 +762,7 @@ function initialize() {
     document.querySelectorAll('input[name="visibility"]').forEach((control) => control.addEventListener("change", () => {
         invalidateGrant();
     }));
+    updateKeyNotes();
 
     element("certificate-submit")?.addEventListener("click", async () => {
         if (!canSubmit()) return;
@@ -762,9 +816,16 @@ function initialize() {
         element("result-issuer").textContent = result.issuer;
         element("result-key").textContent = result.issuer_key_id;
         element("result-digest").textContent = result.statement.artifact_sha256;
+        renderProtocol(result.protocol);
         element("result-note").textContent = t("revocationNote");
         element("verification-result").hidden = false;
         if (focus) element("verification-result").focus();
+    }
+
+    function renderProtocol(protocol) {
+        const summary = protocolSummary(protocol);
+        element("result-protocol").textContent = summary ? `${summary.version} · ${summary.algorithm}` : String(protocol);
+        element("result-protocol-note").textContent = summary ? t(summary.postQuantum ? "protocolPostQuantum" : "protocolClassical") : "";
     }
 
     function renderERC8004Verification(result, focus = true) {
@@ -794,6 +855,8 @@ function initialize() {
         element("result-issuer").textContent = result.issuer;
         element("result-key").textContent = result.issuer_key_id;
         element("result-digest").textContent = `${result.request.chain_id}:${result.request.registry_address}:${result.request.erc8004_agent_id}`;
+        element("result-protocol").textContent = `${ERC8004_PROTOCOL.split("/").slice(-2).join(" ")} · Ed25519`;
+        element("result-protocol-note").textContent = t("protocolClassical");
         element("result-note").textContent = t("erc8004Boundary");
         element("verification-result").hidden = false;
         if (focus) element("verification-result").focus();
@@ -822,8 +885,11 @@ function initialize() {
             const when = element("verify-time").value;
             if (!when) throw new Error(t("timeRequired"));
             const options = { at: new Date(when).toISOString() };
+            const requirePQ = Boolean(element("verify-require-03")?.checked);
+            if (requirePQ) options.acceptedProtocols = [PROTOCOL_03];
             if (policy.issuer) { options.issuer = policy.issuer; options.keyIDs = [policy.keyID]; }
             const erc8004 = bundle?.protocol === ERC8004_PROTOCOL;
+            if (erc8004 && requirePQ) throw new Error(t("requirePQBinding"));
             const result = erc8004
                 ? await verifyERC8004Binding(bundle, { issuer: policy.issuer, trustedKeyIDs: policy.keyID ? [policy.keyID] : [], now: new Date(when).toISOString() })
                 : await verifyBundle(bundle, options);

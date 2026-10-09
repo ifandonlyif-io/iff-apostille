@@ -5,8 +5,9 @@
 and `cmd/apostille/v0.1.0-alpha.1`, tagged in that order on 2026-09-22 after CI
 passed on `d2c72c8`. No CLI binary release and no npm package are published.
 Preserve protocol/profile identifiers and vector bytes independently of software
-package versions: Core stays `0.1`, and the accepted Core 0.2 specification has
-no implementation, which every release note must say.
+package versions. Core 0.2 and 0.3 are implemented in the source tree but not in
+this release; every release note must say which Core versions its tag contains,
+and that 0.1 remains the default signing version until a switch is announced.
 
 ## Validate a clean source checkout
 
@@ -18,6 +19,19 @@ mkdir -p dist
 npm pack ./sdk/apostille-js --pack-destination ./dist
 ```
 
+The browser modules vendor `@noble/curves`, `@noble/hashes` and
+`@noble/post-quantum` under `web/vendor/noble/`. Before a release that includes
+Core 0.2 or 0.3, check that the tree still matches the pinned upstream tarballs:
+
+```sh
+dir="$(mktemp -d)" && (cd "$dir" && npm pack @noble/curves@2.4.0 @noble/hashes@2.4.0 @noble/post-quantum@0.7.1)
+node scripts/vendor-noble.mjs "$dir" --check
+```
+
+The script verifies each tarball against the pinned registry integrity value and
+fails on any difference; it writes nothing with `--check`. See
+[NOTICES.md](NOTICES.md).
+
 `make check` builds, vets and race-tests the root and isolated CLI/ZK modules,
 runs Go/JS conformance, type-checks the JS SDK and builds the offline verifier.
 Node 22+ is required: do not accept silently skipped Go/JS interop tests.
@@ -25,6 +39,10 @@ First builds download public dependencies. Offline runtime does not imply an
 offline initial build; pre-populate all three modules' caches when required.
 
 Review the npm tarball file list and install it into a new temporary project.
+The conformance case files (`core-0.2-cases.json` is 1.2 MB and
+`core-0.3-cases.json` 7.7 MB) stay out of the npm package and the offline
+verifier archive; they ship only in the source archive. The package carries the
+vectors and schemas.
 Verify offline imports, declarations and examples there. The core package has
 no npm runtime dependencies. Do not include node_modules, secrets or private
 application artifacts. Retain source LICENSE, synthetic-vector notice and
@@ -58,6 +76,12 @@ new root tag exists. To test a nested module against uncommitted root changes,
 add `replace github.com/ifandonlyif-io/iff-apostille => ../..` (and the ZK
 module's counterpart) locally and never commit it; CI's tidy check rejects a
 committed replace by way of the changed `go.mod`.
+
+A root version that contains Core 0.3 moves the module to `go 1.27.0` (toolchain
+`go1.27.2`), because it uses the standard library `crypto/mldsa`. Module
+consumers need Go 1.27 once they pin such a root version, to verify or sign any
+Core version, and the release note must say so. The nested modules and the hosted
+service keep working on their current pins until they bump the root version.
 
 Release order for the next version: tag the root after CI passes; in the ZK
 module pin the new root version, tidy, test against the downloaded root, commit

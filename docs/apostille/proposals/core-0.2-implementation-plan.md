@@ -474,7 +474,32 @@ Acceptance: `make check` green including `apostille-local-test`; the offline
 verifier archive builds and a local no-network browser check passes
 (`CONTRIBUTING.md` requirement); translations reviewed.
 
-Outcome: (append when landed)
+Outcome: landed together with Core 0.3 Phase 4; see that plan. Root-module part (2026-10-09), CLI pending:
+
+- **Browser.** The verifier shows the bundle's protocol with a post-quantum or
+  classical note, and offers "Require post-quantum signatures (Core 0.3 only)"
+  (`acceptedProtocols`). Key cards gain an algorithm choice; the default is
+  Ed25519.
+- **ML-DSA-65 keys in the browser.** They show the owner-approved disclosure,
+  sign Core 0.3 locally (a producer statement, because the page has no local
+  delegation flow), and disable the hosted actions with a "hosted 0.3 pending"
+  note.
+- **Strings.** Nine new message keys in four locales, plus one changed text
+  (`verifyToolsBoundary`).
+- **Docs.** `SDK.md`, `CONFORMANCE.md`, `RELEASE.md`, `API.md`, `CLI.md`,
+  `NOTICES.md`, and the root README in four languages.
+- **Checks.** `make check` passes with no skips (111 JS tests, 33 SDK tests),
+  and the offline verifier builds 43 assets.
+- **Real-browser offline check** (headless Chrome 155 over the DevTools Protocol,
+  served from localhost):
+  - The 0.3 and 0.1 vectors verify under the page's CSP, with `connect-src
+    'none'`.
+  - "Require post-quantum" refuses 0.1 and hides the result panel.
+  - The ML-DSA-65 disclosure appears on selection.
+  - 31 requests, all to the local server, with no console errors, CSP
+    violations or exceptions.
+- **Not done.** The CLI (C7′) needs a tagged root release first, because
+  `cmd/apostille` pins the released root module.
 
 ### Phase 5 — Hosted service and API client (external)
 

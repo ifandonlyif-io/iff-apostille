@@ -6,7 +6,7 @@
 
 為 agent 產物提供可攜、與 issuer 無關的簽章。Agent 簽署檔案 manifest，管理員授權其金鑰，issuer 記錄已執行的檢查。收件者可在本機查驗 bundle，不需要 IFF 帳號或網際網路連線。你可以使用 SDK，也可以依公開規格與相容性向量自行實作。
 
-**目前為 Alpha。** Core protocol `0.1`、Go 模組版本 `v0.1.0-alpha.1` 與 SDK 套件版本 `0.1.0-alpha.1` 是不同的版本命名空間。Go root 模組（`apostille`、`apostille/client`、`util`）已發佈 `v0.1.0-alpha.1`；CLI 與 ZK 模組的標籤分別為 `cmd/apostille/v0.1.0-alpha.1`、`apostille/zkbudget/v0.1.0-alpha.1`。尚未發佈 npm 套件或預編譯 CLI 執行檔。Core 0.2 規格已通過審查，實作與向量仍待完成；詳見[路線圖](#roadmap)。
+**目前為 Alpha。** Core protocol `0.1`、Go 模組版本 `v0.1.0-alpha.1` 與 SDK 套件版本 `0.1.0-alpha.1` 是不同的版本命名空間。Go root 模組（`apostille`、`apostille/client`、`util`）已發佈 `v0.1.0-alpha.1`；CLI 與 ZK 模組的標籤分別為 `cmd/apostille/v0.1.0-alpha.1`、`apostille/zkbudget/v0.1.0-alpha.1`。尚未發佈 npm 套件或預編譯 CLI 執行檔。Core 0.2 與 Core 0.3 已在此原始碼樹中實作，但不屬於 `v0.1.0-alpha.1`；詳見[路線圖](#roadmap)。
 
 此版本包含 215 個共同相容性案例、Go/JavaScript differential 測試、fuzz 測試，以及未配對 Unicode surrogate 的處理修正。IFF 託管服務使用固定版本的公開 Go 模組。
 
@@ -32,6 +32,8 @@
 | 元件 | 原始碼 | 提供內容 |
 | --- | --- | --- |
 | Core 0.1 | [規格](docs/apostille/spec/core-0.1.md)、[schema](web/apostille-0.1.schema.json)、[vectors](testdata/apostille/core-0.1.json)、[cases](testdata/apostille/core-0.1-cases.json) | 確切位元組，以及接受／拒絕查驗案例 |
+| Core 0.2 | [規格](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)、[vectors](testdata/apostille/core-0.2.json)、[cases](testdata/apostille/core-0.2-cases.json) | 明確的識別字文法與嚴格 Ed25519；尚未發佈 |
+| Core 0.3 | [規格](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)、[vectors](testdata/apostille/core-0.3.json)、[cases](testdata/apostille/core-0.3-cases.json) | ML-DSA-65（FIPS 204）簽章；尚未發佈 |
 | Go | [core](apostille/)、[API client](apostille/client/) | 離線簽署與查驗；明確呼叫才會使用託管 API |
 | JavaScript / TypeScript | [SDK](sdk/apostille-js/) | 預設 import 離線運作，另有獨立 `/client` 入口 |
 | 本機 CLI | [指令](docs/apostille/CLI.md) | 金鑰產生、簽署、本機簽發與查驗 |
@@ -41,7 +43,7 @@
 
 ## 從原始碼試用
 
-需要 Go 工具鏈 `go1.26.6`（各模組的最低語言版本見 `go.mod`）、Node.js 22 以上、npm、Python 3 與 make。首次建置會下載公開依賴；簽署與離線查驗不需要網路。
+需要 Go 工具鏈 `go1.27.2`（各模組的最低語言版本見 `go.mod`）、Node.js 22 以上、npm、Python 3 與 make。首次建置會下載公開依賴；簽署與離線查驗不需要網路。
 
 ```sh
 make check
@@ -50,7 +52,7 @@ make verifier
 python3 -m http.server 8080 --bind 127.0.0.1 --directory dist/verifier
 ```
 
-開啟 `http://127.0.0.1:8080/`。瀏覽器 ES modules 需要 HTTP origin，因此不支援 `file://`。頁面只使用本機資產，並套用 `connect-src 'none'`。匯入 bundle，以及由獨立來源取得的 issuer/key pin。瀏覽器不產生或查驗 ZK proof；請使用獨立的 CLI/Go 模組。
+開啟 `http://127.0.0.1:8080/`。瀏覽器 ES modules 需要 HTTP origin，因此不支援 `file://`。頁面只使用本機資產，並套用 `connect-src 'none'`。匯入 bundle（Core 0.1、0.2 或 0.3），以及由獨立來源取得的 issuer/key pin。瀏覽器不產生或查驗 ZK proof；請使用獨立的 CLI/Go 模組。
 
 打包 JS SDK，但不發佈：
 
@@ -66,11 +68,11 @@ npm pack ./sdk/apostille-js --pack-destination ./dist
 
 ## 路線圖
 
-Core 0.2（[規格](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）加入明確的識別字文法、嚴格 Ed25519 查驗與版本命名空間。規格已通過審查，但尚無參考實作或相容性向量，目前不得宣稱符合 0.2。[實作計畫](docs/apostille/proposals/core-0.2-implementation-plan.md)追蹤進度。JS SDK 的 npm 發佈與預編譯 CLI 執行檔也在規劃中，均不屬於 `v0.1.0-alpha.1`。
+Core 0.2（[規格](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）加入明確的識別字文法、嚴格 Ed25519 查驗與版本命名空間。Core 0.3（[規格](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）沿用該文法，並以 ML-DSA-65（FIPS 204）簽署。Go 與 JavaScript 參考實作、向量與相容性案例都在此原始碼樹中；瀏覽器查驗器可查驗三個版本。CLI、託管服務與託管 API 用戶端尚不支援 0.2 與 0.3。在宣布切換之前，預設簽署版本仍為 Core 0.1；0.2 與 0.3 為明確選項。進度由 [0.2](docs/apostille/proposals/core-0.2-implementation-plan.md) 與 [0.3](docs/apostille/proposals/core-0.3-implementation-plan.md) 實作計畫追蹤。JS SDK 的 npm 發佈與預編譯 CLI 執行檔也在規劃中，均不屬於 `v0.1.0-alpha.1`。
 
 ## 查驗結果代表什麼
 
-有效簽章證明完整性與金鑰持有。接受 issuer 需要你自行指定、完全相符的 issuer/key pin。它不證明內容真實性、完整 bot 歷史、組織身分、目前未撤銷狀態、付款安全或法律效力。本專案不是海牙 Apostille 或政府認證。雜湊仍可用來識別或串聯紀錄；雜湊不等於匿名化。
+有效簽章證明完整性與金鑰持有。接受 issuer 需要你自行指定、完全相符的 issuer/key pin。它不證明內容真實性、完整 bot 歷史、組織身分、目前未撤銷狀態、付款安全或法律效力。本專案不是海牙 Apostille 或政府認證。雜湊仍可用來識別或串聯紀錄；雜湊不等於匿名化。Core 0.3 使簽章成為後量子簽章，但不代表整個系統具備量子安全。SHA-256 摘要對需要碰撞的攻擊，仍只提供 NIST category 2 的強度；信任、隱私與其他部分均不變（見[規格的安全等級](docs/apostille/spec/core-0.3.md#security-level-receiver-policy-and-versioning)）。
 
 ERC-8004 binding 回報 `issuer_checked` 的歷史觀測，目前所有權仍未知。ZK 證明的是已承諾輸入向量的某項條件，不證明上游資料完整或真實。單方開發用 setup 屬於實驗性質，尚無外部稽核，也不是正式環境的信任建立儀式。Coinbase verification、LEI/vLEI 與 Cloudflare Wallets 仍為規劃中的整合。
 

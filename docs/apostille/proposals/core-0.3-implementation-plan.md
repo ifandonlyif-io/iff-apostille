@@ -20,7 +20,7 @@ the acceptance criteria before the status table changes.
 | 1 | `spec/core-0.3.md` + `web/apostille-0.3.schema.json` | ✅ DONE | Accepted 2026-10-09; the schema is the 0.2 schema with 16 lines changed (`$id`, title, protocol constants, algorithm, key and signature lengths) |
 | 2 | Go: 0.3 profile, ML-DSA-65 signer and verifier, 0.3 key files, login 0.3 helpers, 0.3 vectors | ✅ DONE | Landed 2026-10-09; see Phase 2 outcome |
 | 3 | JS: vendored `@noble/post-quantum`, 0.3 verify and sign, consumers for 0.3 vectors, Go/JS differential at 0.3 | ✅ DONE | Landed 2026-10-09 with 0.2 Phase 3; 0.3 differential table empty |
-| 4 | CLI, browser verifier and signing UI (with the signing disclosure), docs, notices | ⬜ pending | New UI strings need reviewed translations in four locales |
+| 4 | CLI, browser verifier and signing UI (with the signing disclosure), docs, notices | 🟡 partial | Browser and docs landed 2026-10-09; CLI waits for the root release (Phase 5); translations await owner review |
 | 5 | Release tags for the root and nested modules | ⬜ pending | The user decides the tag names |
 | 6 | Hosted service and API client (`iff-trust-oracle`) | ⬜ pending | External; ML-DSA issuer key provisioned by the owner |
 | 7 | Default signing version switches from 0.1 to 0.3 | ⬜ pending | Gated on Phase 6 deployed, the announced date and the alpha notice |
@@ -328,6 +328,47 @@ Deliverables:
 
 Acceptance: UI tests, the four-locale dictionary test, and manual verifier
 checks offline with `connect-src 'none'`.
+
+Outcome: Root-module part (2026-10-09), CLI pending:
+
+- **Browser.** The verifier shows the bundle's protocol with a post-quantum or
+  classical note, and offers "Require post-quantum signatures (Core 0.3 only)"
+  (`acceptedProtocols`). Key cards gain an algorithm choice; the default is
+  Ed25519.
+- **ML-DSA-65 keys in the browser.** They show the owner-approved disclosure,
+  sign Core 0.3 locally (a producer statement, because the page has no local
+  delegation flow), and disable the hosted actions with a "hosted 0.3 pending"
+  note.
+- **Strings.** Nine new message keys in four locales, plus one changed text
+  (`verifyToolsBoundary`).
+- **Docs.** `SDK.md`, `CONFORMANCE.md`, `RELEASE.md`, `API.md`, `CLI.md`,
+  `NOTICES.md`, and the root README in four languages.
+- **Checks.** `make check` passes with no skips (111 JS tests, 33 SDK tests),
+  and the offline verifier builds 43 assets.
+- **Real-browser offline check** (headless Chrome 155 over the DevTools Protocol,
+  served from localhost):
+  - The 0.3 and 0.1 vectors verify under the page's CSP, with `connect-src
+    'none'`.
+  - "Require post-quantum" refuses 0.1 and hides the result panel.
+  - The ML-DSA-65 disclosure appears on selection.
+  - 31 requests, all to the local server, with no console errors, CSP
+    violations or exceptions.
+- **Not done.** The CLI (C7′) needs a tagged root release first, because
+  `cmd/apostille` pins the released root module.
+- **Review fixes (2026-10-09).**
+  - Local ML-DSA-65 signing now downloads a producer-only bundle
+    (`apostille-bundle.json`) instead of a bare statement envelope, so "sign,
+    download, verify" completes without the hosted service. This is checked by
+    the UI test (`verifyBundle` and `verifyArtifact`) and in headless Chrome
+    under the offline CSP.
+  - `importKeyFile` has overloads that keep `Ed25519Signer` or `MLDSA65Signer`
+    from the key file's protocol. `test/typecheck.ts` covers generate, import
+    and sign-in for both algorithms; without the overloads it fails with TS2375,
+    TS2379, TS2322 and TS2345.
+  - The disclosure in all four locales recommends the CLI only once a CLI release
+    supports Core 0.3.
+- **CLI development.** It can proceed against an uncommitted local `replace`
+  (AGENTS.md). Only committing the pin needs the root tag.
 
 ### Phase 5 — Release
 

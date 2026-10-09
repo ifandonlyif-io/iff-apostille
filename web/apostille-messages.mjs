@@ -22,7 +22,7 @@ const en = {
     serviceReady: "Apostille service available. Issuer: {issuer}", serviceUnavailable: "Hosted issuance is unavailable; offline verification remains available.", serviceUnknown: "Service status could not be loaded.",
     keyGenerated: "Key generated and downloaded. Keep the backup; it cannot be recovered here.", keyImported: "Key imported into this tab's memory.", loginWorking: "Signing a one-time challenge…", loginComplete: "Signed in. The 15-minute token remains in memory only.",
     profileSaved: "Profile saved.", shareProfile: "Open public profile", agentKeyReady: "Agent key generated and downloaded.", agentImported: "Agent key imported. Select its registered agent or create a new registration.", agentRegistered: "Agent registered and registration downloaded.", agentRevoked: "Agent revoked. Existing certificates remain historical records.",
-    fileSelected: "{name} · {size}", fileTooLarge: "The selected file exceeds the 64 MiB local limit.", statementReady: "Statement signed and downloaded. The original was not uploaded.", grantReady: "{visibility} publication grant signed and downloaded; it expires in five minutes.", certificateIssued: "Certificate issued and bundle downloaded.", certificateHidden: "Public certificate hidden. Its signed bundle is unchanged.",
+    fileSelected: "{name} · {size}", fileTooLarge: "The selected file exceeds the 64 MiB local limit.", statementReady: "Statement signed and downloaded. The original was not uploaded.", producerBundleReady: "Statement signed and downloaded as a producer-only bundle that the verifier accepts. The original was not uploaded.", grantReady: "{visibility} publication grant signed and downloaded; it expires in five minutes.", certificateIssued: "Certificate issued and bundle downloaded.", certificateHidden: "Public certificate hidden. Its signed bundle is unchanged.",
     emptyAgents: "No agents registered yet.", emptyCertificates: "No certificates issued yet.", useAgent: "Use for signing", activeAgent: "Signing key selected", revoke: "Revoke", downloadBundle: "Download bundle", share: "Public link", hide: "Hide",
     verifyPass: "Signatures and bindings are intact", verifyPinned: "Signatures are intact; the issuer pin matches", verifyHistorical: "Signatures are intact; the certificate is outside the evaluation time", verifyUntrusted: "Signatures are valid; issuer trust is not established", verifyFail: "Bundle could not be verified", checkIntegrity: "Artifact manifest and signatures", checkIssuer: "Issuer policy", checkFreshness: "Certificate time window", checkAgent: "Agent delegation", checkArtifact: "Original artifact comparison", pass: "Pass", pinMatched: "Pin matched", untrusted: "Untrusted", unknown: "Unknown", expired: "Expired", notYetValid: "Not yet valid", mismatch: "Mismatch", notProvided: "Not provided", current: "Current", offlineLabel: "Offline",
     erc8004VerifyPinned: "Binding signatures are intact and the issuer pin matches", erc8004VerifyUnknown: "Binding signatures are intact; issuer trust is unknown", erc8004VerifyHistorical: "Binding signatures are intact; the snapshot is outside its validity window", erc8004ProviderEvidence: "Issuer's owner and chain check", erc8004CurrentOwnership: "Current token ownership", erc8004Organization: "Organization binding", erc8004Payment: "Payment authority", withinValidity: "Within signed validity", issuerChecked: "Checked by issuer", unprovenValue: "Unproven", notEstablished: "Not established", historical: "Historical",
@@ -60,7 +60,17 @@ const en = {
     zkSpec: "ZK budget profile 0.1 specification",
     profileSpecMeta: "English · specification",
     coreResources: "Core 0.1 reference files",
-    verifyToolsBoundary: "This browser verifier and its offline ZIP support Core 0.1 bundles and ERC-8004 binding snapshots. ZK budget proofs require the local Go SDK or CLI; the browser, JavaScript SDK and hosted API do not generate or verify them.",
+    verifyToolsBoundary: "This browser verifier and its offline ZIP support Core 0.1, 0.2 and 0.3 bundles and ERC-8004 binding snapshots. ZK budget proofs require the local Go SDK or CLI; the browser, JavaScript SDK and hosted API do not generate or verify them.",
+    // Core 0.3 (ML-DSA-65): key choice, browser signing disclosure, hosted notice, verifier policy.
+    keyAlgorithm: "Key algorithm",
+    algEd25519: "Ed25519 (Core 0.1)",
+    algMLDSA: "ML-DSA-65 (Core 0.3, post-quantum)",
+    mldsaDisclosure: "ML-DSA-65 in the browser uses the vendored @noble/post-quantum library, which states that it is not independently audited and does not claim constant-time signing. For administrator keys, the command-line tool (Go standard library) will be the recommended path once a CLI release supports Core 0.3.",
+    hostedPending: "The hosted service does not accept Core 0.3 yet, so sign-in, registration and submission are unavailable for ML-DSA-65 keys. Local signing and offline verification still work.",
+    requirePQ: "Require post-quantum signatures (Core 0.3 only)",
+    requirePQBinding: "Post-quantum signatures are required, but an ERC-8004 binding snapshot is signed with Ed25519.",
+    protocolPostQuantum: "The signatures in this bundle use ML-DSA-65 (FIPS 204), a post-quantum algorithm. Only the signatures are post-quantum; trust decisions and the other checks are unchanged.",
+    protocolClassical: "The signatures here use Ed25519, which is not post-quantum.",
 };
 
 const ja = {
@@ -87,7 +97,7 @@ const ja = {
     serviceReady: "Apostille service は利用できます。Issuer: {issuer}", serviceUnavailable: "Hosted issuance は現在利用できません。offline verification は利用できます。", serviceUnknown: "service status を読み込めませんでした。",
     keyGenerated: "鍵を生成してダウンロードしました。ここでは復元できないため backup を保管してください。", keyImported: "鍵をこのタブのメモリに import しました。", loginWorking: "一回限りの challenge に署名中…", loginComplete: "ログインしました。15 分 token はメモリだけに保持されます。",
     profileSaved: "Profile を保存しました。", shareProfile: "公開 profile を開く", agentKeyReady: "Agent 鍵を生成してダウンロードしました。", agentImported: "Agent 鍵を import しました。対応する登録済み agent を選ぶか、新しい registration を作成してください。", agentRegistered: "Agent を登録し、registration をダウンロードしました。", agentRevoked: "Agent を revoke しました。既存の証明書は履歴として残ります。",
-    fileSelected: "{name} · {size}", fileTooLarge: "選択したファイルは 64 MiB のローカル上限を超えています。", statementReady: "Statement に署名してダウンロードしました。原本は upload されていません。", grantReady: "{visibility} publication grant に署名して保存しました。5 分で期限切れになります。", certificateIssued: "証明書を発行し bundle をダウンロードしました。", certificateHidden: "公開証明書を非表示にしました。署名済み bundle は変更されません。",
+    fileSelected: "{name} · {size}", fileTooLarge: "選択したファイルは 64 MiB のローカル上限を超えています。", statementReady: "Statement に署名してダウンロードしました。原本は upload されていません。", producerBundleReady: "Statement に署名し、検証ツールでそのまま確認できる producer-only bundle としてダウンロードしました。原本は upload されていません。", grantReady: "{visibility} publication grant に署名して保存しました。5 分で期限切れになります。", certificateIssued: "証明書を発行し bundle をダウンロードしました。", certificateHidden: "公開証明書を非表示にしました。署名済み bundle は変更されません。",
     emptyAgents: "登録済み agent はありません。", emptyCertificates: "発行済み証明書はありません。", useAgent: "署名に使用", activeAgent: "署名鍵を選択済み", revoke: "失効", downloadBundle: "bundle を保存", share: "公開リンク", hide: "非表示",
     verifyPass: "署名と binding は完全です", verifyPinned: "署名は完全で、issuer pin は一致しています", verifyHistorical: "署名は完全ですが、証明書は評価時刻の範囲外です", verifyUntrusted: "署名は有効ですが issuer trust は未確立です", verifyFail: "Bundle を検証できません", checkIntegrity: "Artifact manifest と署名", checkIssuer: "Issuer policy", checkFreshness: "証明書の時間範囲", checkAgent: "Agent delegation", checkArtifact: "原本比較", pass: "合格", pinMatched: "Pin 一致", untrusted: "未信頼", unknown: "不明", expired: "期限切れ", notYetValid: "未発効", mismatch: "不一致", notProvided: "未提供", current: "有効", offlineLabel: "オフライン",
     erc8004VerifyPinned: "Binding の署名は完全で issuer pin が一致しています", erc8004VerifyUnknown: "Binding の署名は完全ですが issuer trust は不明です", erc8004VerifyHistorical: "Binding の署名は完全ですが snapshot は有効期間外です", erc8004ProviderEvidence: "Issuer の owner と chain check", erc8004CurrentOwnership: "現在の token ownership", erc8004Organization: "組織 binding", erc8004Payment: "Payment authority", withinValidity: "署名の有効期間内", issuerChecked: "Issuer が確認", unprovenValue: "未証明", notEstablished: "未確立", historical: "履歴",
@@ -125,7 +135,17 @@ const ja = {
     zkSpec: "ZK budget profile 0.1 仕様",
     profileSpecMeta: "英語 · 仕様",
     coreResources: "Core 0.1 参照ファイル",
-    verifyToolsBoundary: "このブラウザ検証ツールとオフライン ZIP は Core 0.1 bundle と ERC-8004 binding snapshot に対応しています。ZK budget proof にはローカルの Go SDK または CLI が必要です。ブラウザ、JavaScript SDK、ホスト型 API での ZK proof の生成・検証には対応していません。",
+    verifyToolsBoundary: "このブラウザ検証ツールとオフライン ZIP は Core 0.1、0.2、0.3 の bundle と ERC-8004 binding snapshot に対応しています。ZK budget proof にはローカルの Go SDK または CLI が必要です。ブラウザ、JavaScript SDK、ホスト型 API での ZK proof の生成・検証には対応していません。",
+    // Core 0.3 (ML-DSA-65): key choice, browser signing disclosure, hosted notice, verifier policy.
+    keyAlgorithm: "鍵アルゴリズム",
+    algEd25519: "Ed25519（Core 0.1）",
+    algMLDSA: "ML-DSA-65（Core 0.3、耐量子）",
+    mldsaDisclosure: "ブラウザーでの ML-DSA-65 は、同梱の @noble/post-quantum ライブラリを使います。このライブラリは、独立した監査を受けておらず、署名の定数時間実行も保証しないと明記しています。Core 0.3 に対応した CLI のリリース後は、管理者鍵にはコマンドラインツール（Go 標準ライブラリ）の利用を推奨します。",
+    hostedPending: "ホスト型サービスはまだ Core 0.3 に対応していないため、ML-DSA-65 鍵ではサインイン、登録、提出を利用できません。ローカル署名とオフライン検証は利用できます。",
+    requirePQ: "耐量子署名を必須にする（Core 0.3 のみ）",
+    requirePQBinding: "耐量子署名が必須ですが、ERC-8004 binding snapshot は Ed25519 で署名されています。",
+    protocolPostQuantum: "この bundle の署名は、耐量子アルゴリズムの ML-DSA-65（FIPS 204）を使っています。耐量子なのは署名のみで、信頼の判断とその他の確認は変わりません。",
+    protocolClassical: "この署名は Ed25519 を使っており、耐量子ではありません。",
 };
 
 const zhHant = {
@@ -153,7 +173,7 @@ const zhHant = {
     serviceReady: "Apostille 服務可用。Issuer：{issuer}", serviceUnavailable: "託管發證目前不可用；離線查驗仍可使用。", serviceUnknown: "無法載入服務狀態。",
     keyGenerated: "金鑰已產生並下載。請保存備份；此處無法復原。", keyImported: "金鑰已匯入此分頁的記憶體。", loginWorking: "正在簽署一次性 challenge…", loginComplete: "已登入。15 分鐘 token 只保留在記憶體。",
     profileSaved: "Profile 已儲存。", shareProfile: "開啟公開 profile", agentKeyReady: "Agent 金鑰已產生並下載。", agentImported: "Agent 金鑰已匯入。請選擇對應的已註冊 agent，或建立新 registration。", agentRegistered: "Agent 已註冊，registration 已下載。", agentRevoked: "Agent 已撤銷；既有證明仍是歷史紀錄。",
-    fileSelected: "{name} · {size}", fileTooLarge: "所選檔案超過 64 MiB 本機上限。", statementReady: "Statement 已簽署並下載；原件沒有上傳。", grantReady: "{visibility} publication grant 已簽署並下載，五分鐘後到期。", certificateIssued: "證明已簽發並下載 bundle。", certificateHidden: "公開證明已隱藏；其已簽署 bundle 不會改變。",
+    fileSelected: "{name} · {size}", fileTooLarge: "所選檔案超過 64 MiB 本機上限。", statementReady: "Statement 已簽署並下載；原件沒有上傳。", producerBundleReady: "Statement 已簽署，並以查驗器可直接讀取的 producer-only bundle 下載；原件沒有上傳。", grantReady: "{visibility} publication grant 已簽署並下載，五分鐘後到期。", certificateIssued: "證明已簽發並下載 bundle。", certificateHidden: "公開證明已隱藏；其已簽署 bundle 不會改變。",
     emptyAgents: "尚未註冊 agent。", emptyCertificates: "尚未簽發證明。", useAgent: "用於簽署", activeAgent: "已選擇簽署金鑰", revoke: "撤銷", downloadBundle: "下載 bundle", share: "公開連結", hide: "隱藏",
     verifyPass: "簽章與綁定皆完整", verifyPinned: "簽章完整，issuer pin 相符", verifyHistorical: "簽章完整，但證明不在評估時間範圍內", verifyUntrusted: "簽章有效，但尚未建立 issuer 信任", verifyFail: "無法查驗 bundle", checkIntegrity: "原件 manifest 與簽章", checkIssuer: "Issuer policy", checkFreshness: "證明時間範圍", checkAgent: "Agent delegation", checkArtifact: "原件比對", pass: "通過", pinMatched: "Pin 相符", untrusted: "未信任", unknown: "未知", expired: "已過期", notYetValid: "尚未生效", mismatch: "不相符", notProvided: "未提供", current: "目前有效", offlineLabel: "離線",
     erc8004VerifyPinned: "Binding 簽章完整且 issuer pin 相符", erc8004VerifyUnknown: "Binding 簽章完整；issuer trust 未知", erc8004VerifyHistorical: "Binding 簽章完整；snapshot 已超出有效期間", erc8004ProviderEvidence: "Issuer 的 owner 與 chain check", erc8004CurrentOwnership: "目前 token ownership", erc8004Organization: "組織 binding", erc8004Payment: "Payment authority", withinValidity: "在簽署有效期間內", issuerChecked: "Issuer 已檢查", unprovenValue: "未證明", notEstablished: "未建立", historical: "歷史紀錄",
@@ -191,7 +211,17 @@ const zhHant = {
     zkSpec: "ZK budget profile 0.1 規格",
     profileSpecMeta: "English · 規格",
     coreResources: "Core 0.1 參考檔案",
-    verifyToolsBoundary: "此瀏覽器查驗器與離線 ZIP 支援 Core 0.1 bundle 和 ERC-8004 binding snapshot。ZK budget proof 必須使用本機 Go SDK 或 CLI；瀏覽器、JavaScript SDK 與託管 API 尚不產生或查驗 ZK proof。",
+    verifyToolsBoundary: "此瀏覽器查驗器與離線 ZIP 支援 Core 0.1、0.2、0.3 bundle 和 ERC-8004 binding snapshot。ZK budget proof 必須使用本機 Go SDK 或 CLI；瀏覽器、JavaScript SDK 與託管 API 尚不產生或查驗 ZK proof。",
+    // Core 0.3 (ML-DSA-65): key choice, browser signing disclosure, hosted notice, verifier policy.
+    keyAlgorithm: "金鑰演算法",
+    algEd25519: "Ed25519（Core 0.1）",
+    algMLDSA: "ML-DSA-65（Core 0.3，後量子）",
+    mldsaDisclosure: "瀏覽器中的 ML-DSA-65 使用內建的 @noble/post-quantum 程式庫；該程式庫聲明尚未經獨立審計，也不保證簽署為常數時間。待命令列工具（Go 標準庫）推出支援 Core 0.3 的版本後，管理員金鑰建議改用該工具。",
+    hostedPending: "託管服務尚不接受 Core 0.3，因此 ML-DSA-65 金鑰無法登入、註冊或提交。本機簽署與離線查驗仍可使用。",
+    requirePQ: "要求後量子簽章（僅限 Core 0.3）",
+    requirePQBinding: "已要求後量子簽章，但 ERC-8004 binding snapshot 使用 Ed25519 簽署。",
+    protocolPostQuantum: "此 bundle 的簽章使用 ML-DSA-65（FIPS 204），屬於後量子演算法。僅簽章為後量子；信任判斷與其他檢查不變。",
+    protocolClassical: "此簽章使用 Ed25519，不屬於後量子演算法。",
 };
 
 const zhHans = {
@@ -348,6 +378,7 @@ const zhHans = {
     fileSelected: "{name} · {size}",
     fileTooLarge: "所选文件超过 64 MiB 本地上限。",
     statementReady: "Statement 已签名并下载；原文件没有上传。",
+    producerBundleReady: "Statement 已签名，并以查验器可直接读取的 producer-only bundle 下载；原文件没有上传。",
     grantReady: "{visibility} publication grant 已签名并下载，五分钟后到期。",
     certificateIssued: "证书已签发并下载 bundle。",
     certificateHidden: "公开证书已隐藏；其已签名 bundle 不会改变。",
@@ -438,7 +469,17 @@ const zhHans = {
     zkSpec: "ZK budget profile 0.1 规范",
     profileSpecMeta: "英语 · 规范",
     coreResources: "Core 0.1 参考文件",
-    verifyToolsBoundary: "此浏览器查验器与离线 ZIP 支持 Core 0.1 bundle 和 ERC-8004 binding snapshot。ZK budget proof 必须使用本地 Go SDK 或 CLI；浏览器、JavaScript SDK 与托管 API 尚不生成或查验 ZK proof。",
+    verifyToolsBoundary: "此浏览器查验器与离线 ZIP 支持 Core 0.1、0.2、0.3 bundle 和 ERC-8004 binding snapshot。ZK budget proof 必须使用本地 Go SDK 或 CLI；浏览器、JavaScript SDK 与托管 API 尚不生成或查验 ZK proof。",
+    // Core 0.3 (ML-DSA-65): key choice, browser signing disclosure, hosted notice, verifier policy.
+    keyAlgorithm: "密钥算法",
+    algEd25519: "Ed25519（Core 0.1）",
+    algMLDSA: "ML-DSA-65（Core 0.3，后量子）",
+    mldsaDisclosure: "浏览器中的 ML-DSA-65 使用内置的 @noble/post-quantum 库；该库声明尚未经独立审计，也不保证签名为常数时间。待命令行工具（Go 标准库）发布支持 Core 0.3 的版本后，管理员密钥建议改用该工具。",
+    hostedPending: "托管服务尚不接受 Core 0.3，因此 ML-DSA-65 密钥无法登录、注册或提交。本地签名与离线查验仍可使用。",
+    requirePQ: "要求后量子签名（仅限 Core 0.3）",
+    requirePQBinding: "已要求后量子签名，但 ERC-8004 binding snapshot 使用 Ed25519 签名。",
+    protocolPostQuantum: "此 bundle 的签名使用 ML-DSA-65（FIPS 204），属于后量子算法。仅签名为后量子；信任判断与其他检查不变。",
+    protocolClassical: "此签名使用 Ed25519，不属于后量子算法。",
 };
 
 export const messages = Object.freeze({

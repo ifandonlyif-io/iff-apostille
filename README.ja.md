@@ -6,7 +6,7 @@
 
 Agent が生成したファイルに、持ち運べる issuer 非依存の署名を付けます。Agent がファイルの manifest に署名し、管理者がその鍵に権限を委任し、issuer が実施した確認を記録します。受信者は IFF アカウントやインターネット接続なしで bundle をローカル検証できます。SDK を利用するほか、公開仕様と適合性テストベクトルに基づく独自実装も可能です。
 
-**Alpha 版です。** Core protocol `0.1`、Go module のリリース `v0.1.0-alpha.1`、SDK package の `0.1.0-alpha.1` は別のバージョン体系です。Go root module（`apostille`、`apostille/client`、`util`）は `v0.1.0-alpha.1` として公開済みです。CLI と ZK module のタグは、それぞれ `cmd/apostille/v0.1.0-alpha.1` と `apostille/zkbudget/v0.1.0-alpha.1` です。npm package とビルド済み CLI binary は未公開です。Core 0.2 は仕様が承認済みですが、実装とテストベクトルはまだありません。[ロードマップ](#roadmap)を参照してください。
+**Alpha 版です。** Core protocol `0.1`、Go module のリリース `v0.1.0-alpha.1`、SDK package の `0.1.0-alpha.1` は別のバージョン体系です。Go root module（`apostille`、`apostille/client`、`util`）は `v0.1.0-alpha.1` として公開済みです。CLI と ZK module のタグは、それぞれ `cmd/apostille/v0.1.0-alpha.1` と `apostille/zkbudget/v0.1.0-alpha.1` です。npm package とビルド済み CLI binary は未公開です。Core 0.2 と Core 0.3 はこのソースツリーに実装されていますが、`v0.1.0-alpha.1` には含まれません。[ロードマップ](#roadmap)を参照してください。
 
 このリリースには、215 件の共通適合性テストケース、Go/JavaScript 差分テスト、fuzz テスト、未対の Unicode surrogate 処理の修正が含まれます。IFF の hosted service は、この公開 Go リリースをバージョン固定で利用しています。
 
@@ -32,6 +32,8 @@ Agent が生成したファイルに、持ち運べる issuer 非依存の署名
 | 構成要素 | ソース | 提供するもの |
 | --- | --- | --- |
 | Core 0.1 | [仕様](docs/apostille/spec/core-0.1.md)、[schema](web/apostille-0.1.schema.json)、[vectors](testdata/apostille/core-0.1.json)、[cases](testdata/apostille/core-0.1-cases.json) | 正確な bytes と、受理・拒否の検証ケース |
+| Core 0.2 | [仕様](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)、[vectors](testdata/apostille/core-0.2.json)、[cases](testdata/apostille/core-0.2-cases.json) | 厳密な識別子文法と厳格な Ed25519。未リリース |
+| Core 0.3 | [仕様](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)、[vectors](testdata/apostille/core-0.3.json)、[cases](testdata/apostille/core-0.3-cases.json) | ML-DSA-65（FIPS 204）署名。未リリース |
 | Go | [core](apostille/)、[API client](apostille/client/) | オフライン署名・検証と、明示的に呼び出す hosted API |
 | JavaScript / TypeScript | [SDK](sdk/apostille-js/) | オフラインの default import と、独立した `/client` entry |
 | ローカル CLI | [コマンド](docs/apostille/CLI.md) | 鍵生成、署名、ローカル発行、検証 |
@@ -41,7 +43,7 @@ Agent が生成したファイルに、持ち運べる issuer 非依存の署名
 
 ## ソースから試す
 
-必要なもの：Go toolchain `go1.26.6`（言語の最低バージョンは各 `go.mod` を参照）、Node.js 22 以上、npm、Python 3、make。初回ビルドでは公開依存関係をダウンロードします。署名とオフライン検証にはネットワークが不要です。
+必要なもの：Go toolchain `go1.27.2`（言語の最低バージョンは各 `go.mod` を参照）、Node.js 22 以上、npm、Python 3、make。初回ビルドでは公開依存関係をダウンロードします。署名とオフライン検証にはネットワークが不要です。
 
 ```sh
 make check
@@ -50,7 +52,7 @@ make verifier
 python3 -m http.server 8080 --bind 127.0.0.1 --directory dist/verifier
 ```
 
-`http://127.0.0.1:8080/` を開きます。Browser ES modules には HTTP origin が必要なため、`file://` は非対応です。ページはローカル資産のみを使い、`connect-src 'none'` を適用します。Bundle と、独立して取得した issuer/key pin を読み込んでください。Browser は ZK proof の生成・検証に対応していません。別の CLI/Go module を使用します。
+`http://127.0.0.1:8080/` を開きます。Browser ES modules には HTTP origin が必要なため、`file://` は非対応です。ページはローカル資産のみを使い、`connect-src 'none'` を適用します。Bundle（Core 0.1、0.2、0.3）と、独立して取得した issuer/key pin を読み込んでください。Browser は ZK proof の生成・検証に対応していません。別の CLI/Go module を使用します。
 
 公開せずに JS SDK package を作成するには：
 
@@ -66,11 +68,11 @@ npm pack ./sdk/apostille-js --pack-destination ./dist
 
 ## ロードマップ
 
-Core 0.2（[仕様](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）は、厳密な識別子文法、厳格な Ed25519 検証、バージョン付き namespace を追加します。仕様は承認済みですが、reference implementation と適合性テストベクトルは未提供です。現時点で 0.2 準拠を主張できる実装はありません。[実装計画](docs/apostille/proposals/core-0.2-implementation-plan.md)で状態を管理しています。JS SDK の npm 公開とビルド済み CLI binary も予定していますが、いずれも `v0.1.0-alpha.1` には含まれません。
+Core 0.2（[仕様](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）は、厳密な識別子文法、厳格な Ed25519 検証、バージョン付き namespace を追加します。Core 0.3（[仕様](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）はその文法を維持し、ML-DSA-65（FIPS 204）で署名します。Go と JavaScript の reference implementation、vectors、適合性テストケースはこのソースツリーにあり、browser verifier は 3 つのバージョンすべてを検証します。CLI、hosted service、hosted API client はまだ 0.2 と 0.3 に対応していません。切り替えが告知されるまで、署名の既定バージョンは Core 0.1 のままです。0.2 と 0.3 は明示的に選ぶオプションです。状態は[0.2](docs/apostille/proposals/core-0.2-implementation-plan.md)と[0.3](docs/apostille/proposals/core-0.3-implementation-plan.md)の実装計画で管理しています。JS SDK の npm 公開とビルド済み CLI binary も予定していますが、いずれも `v0.1.0-alpha.1` には含まれません。
 
 ## 検証結果の意味
 
-有効な署名は、データの完全性と鍵の所持を示します。Issuer を受け入れるには、自分で定めた完全一致の issuer/key pin が必要です。内容の真実性、bot の完全な履歴、組織の身元、現在の未失効、支払いの安全性、法的効力は証明しません。このプロジェクトはハーグ条約のアポスティーユや政府の認証ではありません。Hash でも記録の識別・関連付けが可能なため、hash 化は匿名化ではありません。
+有効な署名は、データの完全性と鍵の所持を示します。Issuer を受け入れるには、自分で定めた完全一致の issuer/key pin が必要です。内容の真実性、bot の完全な履歴、組織の身元、現在の未失効、支払いの安全性、法的効力は証明しません。このプロジェクトはハーグ条約のアポスティーユや政府の認証ではありません。Hash でも記録の識別・関連付けが可能なため、hash 化は匿名化ではありません。Core 0.3 は署名を耐量子にしますが、システム全体が量子計算機に安全になるわけではありません。SHA-256 の digest は、collision を必要とする攻撃に対して NIST category 2 までの強度に留まり、信頼、プライバシーなどは変わりません（[仕様のセキュリティレベル](docs/apostille/spec/core-0.3.md#security-level-receiver-policy-and-versioning)を参照）。
 
 ERC-8004 binding は `issuer_checked` の過去の観測を報告し、現在の所有権は不明のままです。ZK が証明するのは commitment 済み入力ベクトルについての条件であり、上流データの完全性や真実性ではありません。単独の運用者による開発用 setup は実験的で、外部監査も本番用の信頼確立 ceremony も実施していません。Coinbase verification、LEI/vLEI、Cloudflare Wallets は予定段階です。
 

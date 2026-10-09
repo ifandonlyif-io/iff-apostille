@@ -53,8 +53,9 @@ script `scripts/vendor-noble.mjs` reproduces them byte for byte from
 `npm pack @noble/curves@2.4.0 @noble/hashes@2.4.0 @noble/post-quantum@0.7.1`, and
 its `--table` output is the following inventory (`web/vendor/noble/package.json`
 only marks the files as ES modules for Node and is not upstream). The Noble
-packages have not been independently audited for this use; the Core 0.3 browser
-signing disclosure is Phase 4 work.
+packages have not been independently audited for this use, and
+`@noble/post-quantum` does not claim constant-time signing; the browser UI and
+[SDK.md](SDK.md) state this wherever an ML-DSA-65 key is generated or signs.
 
 | Upstream file | Vendored file | Upstream SHA-256 | Vendored SHA-256 |
 | --- | --- | --- | --- |

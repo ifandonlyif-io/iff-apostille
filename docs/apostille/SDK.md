@@ -9,7 +9,7 @@ records, upload originals or prove that a bot performed the claimed work.
 
 | Interface | Location | Network boundary |
 | --- | --- | --- |
-| JavaScript/TypeScript Core 0.1 | `@ifandonlyif/apostille`, also `/core` | Strictly offline signing and verification |
+| JavaScript/TypeScript Core 0.1, 0.2, 0.3 | `@ifandonlyif/apostille`, also `/core` | Strictly offline signing and verification |
 | JavaScript hosted API client | `@ifandonlyif/apostille/client` | Only explicitly requested API calls |
 | Go core and helpers | `github.com/ifandonlyif-io/iff-apostille/apostille` | Local artifact signing and verification |
 | Go hosted API client | `github.com/ifandonlyif-io/iff-apostille/apostille/client` | Separate online client |
@@ -26,6 +26,7 @@ The JavaScript examples require Node.js 22+. Browser consumers need a secure
 context with WebCrypto Ed25519; a bundler can resolve the package's ESM imports.
 Both languages use the same Core 0.1 wire artifacts and shared conformance vectors.
 See the [normative specification](spec/core-0.1.md) for exact signing bytes.
+Core 0.2 and 0.3 are described under [Core versions](#core-versions-and-post-quantum-signatures).
 
 ## A caller-controlled integration
 
@@ -140,6 +141,53 @@ ExpectedIssuer: expectedIssuer, TrustedKeyIDs: []string{independentKeyID},
 Now: evaluationTime})`, check the returned policy dimensions, and separately call
 `core.VerifyArtifact(result, originalBytes)` when comparing an original. Loading
 that original and deciding the issuer/key pin remain caller responsibilities.
+
+## Core versions and post-quantum signatures
+
+These additions are in this source tree and are not part of `v0.1.0-alpha.1`.
+Signing defaults to Core 0.1. The [0.2](spec/core-0.2.md) and
+[0.3](spec/core-0.3.md) specifications define the other versions.
+
+- **Version option.** Every signing form takes the protocol identifier as its last
+  argument: `sign`, `header`, `createRegistration`, `createStatement`,
+  `createProducerStatement` and `createGrant`. The identifiers are `PROTOCOL`
+  (0.1), `PROTOCOL_02` and `PROTOCOL_03`; `KNOWN_PROTOCOLS` lists them. A statement
+  or grant takes the version of the registration it binds to, and an explicit
+  version that disagrees throws. A bundle never mixes versions. Go uses
+  `SignFor` and `NewHeaderFor`.
+- **Key algorithm.** `generateKeyFile()` returns an Ed25519 key file, protocol
+  0.1. `generateKeyFile({ algorithm: "ML-DSA-65" })` returns a Core 0.3 key file
+  (about 2.9 KB; the limit is `MAX_KEY_FILE_BYTES`, 4096). The key file's
+  `protocol` selects the algorithm: the 0.1 identifier is Ed25519 and signs 0.1
+  and 0.2; the 0.3 identifier is ML-DSA-65 and signs 0.3 only. There is no 0.2 key
+  file. `importKeyFile` derives the public key and key ID from the seed under that
+  algorithm and rejects a mismatch, and a signer of the wrong algorithm for the
+  requested version throws. Go offers `GenerateMLDSAKeyFile`, `ParseKeyFile` and
+  `NewMLDSASigner`. Never reuse one seed for both algorithms.
+- **Receiver policy.** `verifyBundle(bundle, { acceptedProtocols })` (Go
+  `VerifyOptions.AcceptedProtocols`) restricts the versions a receiver accepts.
+  Omitted or `null` accepts every known version; any array, even an empty one,
+  accepts only its members. A receiver that requires post-quantum signatures
+  passes `[PROTOCOL_03]`; without it a forged 0.1 or 0.2 bundle can still report
+  `artifact_integrity: valid`. The result carries `protocol`. See the 0.3
+  [security level](spec/core-0.3.md#security-level-receiver-policy-and-versioning):
+  signatures become post-quantum, SHA-256 digests bound collision attacks at NIST
+  category 2, and issuer trust still needs an exact issuer and key pin.
+- **Login 0.3 helpers.** `signLogin03(message, signer)`, `verifyLogin03(publicKey,
+  message, signature)` and `LOGIN_PREFIX_03` (`iff-apostille/login/0.3` plus LF)
+  sign and check a login message of at most 4096 bytes with pure hedged
+  ML-DSA-65 and the empty context. Go has `SignChallenge03` and
+  `VerifyChallenge03`. They are not wired into the hosted client or the console:
+  the hosted service does not accept Core 0.3 yet, `ApostilleClient` and
+  `signLogin` stay on Core 0.1, and `signLogin` refuses an ML-DSA-65 key.
+- **Browser signing disclosure.** Browser ML-DSA-65 uses the vendored `@noble/post-quantum`, which states that it is not independently audited and does not claim constant-time signing. The browser console and
+  key generation show this wherever an ML-DSA-65 key is generated or signs. For
+  administrator keys the [CLI](CLI.md), which uses the Go standard library
+  `crypto/mldsa`, is the recommended path once it supports 0.3. Hosted sign-in,
+  registration and submission stay disabled for ML-DSA-65 keys; local signing and
+  offline verification work.
+- **Go version.** The root module requires Go 1.27 (`crypto/mldsa`); see
+  [RELEASE.md](RELEASE.md).
 
 ## What each verification result means
 

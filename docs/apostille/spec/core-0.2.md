@@ -1,10 +1,10 @@
 # Apostille Core 0.2 — draft alpha
 
 Status: normative profile for 0.2 artifacts, accepted 2026-09-22 under
-[GOVERNANCE.md](../../../GOVERNANCE.md). No reference implementation or
-conformance vectors exist yet; the
-[implementation plan](../proposals/core-0.2-implementation-plan.md) tracks them,
-and no implementation may claim 0.2 conformance before they do. [Core 0.1](core-0.1.md)
+[GOVERNANCE.md](../../../GOVERNANCE.md). The Go and JavaScript reference implementations and the conformance
+vectors (`testdata/apostille/core-0.2.json`, `core-0.2-cases.json`) exist in
+this source tree but are not yet in a tagged release; the
+[implementation plan](../proposals/core-0.2-implementation-plan.md) tracks what has landed. [Core 0.1](core-0.1.md)
 stays normative for 0.1 artifacts. Licensed under the repository MIT LICENSE.
 This is not a standards-body specification or a legal Apostille. The English
 text is normative. The words MUST, MUST NOT, SHOULD and MAY are used as in

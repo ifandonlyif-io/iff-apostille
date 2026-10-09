@@ -1,10 +1,10 @@
 # Apostille Core 0.3 — draft alpha
 
 Status: normative profile for 0.3 artifacts, accepted 2026-10-09 under
-[GOVERNANCE.md](../../../GOVERNANCE.md). No reference implementation or
-conformance vectors exist yet. The
-[implementation plan](../proposals/core-0.3-implementation-plan.md) tracks them,
-and no implementation may claim 0.3 conformance before they do.
+[GOVERNANCE.md](../../../GOVERNANCE.md). The Go and JavaScript reference implementations and the conformance
+vectors (`testdata/apostille/core-0.3.json`, `core-0.3-cases.json`) exist in
+this source tree but are not yet in a tagged release; the
+[implementation plan](../proposals/core-0.3-implementation-plan.md) tracks what has landed.
 [Core 0.1](core-0.1.md) and [Core 0.2](core-0.2.md) stay normative for their own
 artifacts. Licensed under the repository MIT LICENSE. This is not a
 standards-body specification or a legal Apostille. The English text is
