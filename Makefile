@@ -16,7 +16,7 @@ core:
 	GOWORK=off go test -race ./...
 
 web:
-	node --test web/apostille-core.test.mjs web/apostille-cases.test.mjs web/apostille-erc8004.test.mjs web/apostille-ui.test.mjs
+	node --test web/apostille-core.test.mjs web/apostille-versions.test.mjs web/apostille-cases.test.mjs web/apostille-erc8004.test.mjs web/apostille-ui.test.mjs
 
 sdk:
 	npm --prefix sdk/apostille-js ci --ignore-scripts --no-audit --no-fund

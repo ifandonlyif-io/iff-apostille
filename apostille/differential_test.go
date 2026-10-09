@@ -281,6 +281,16 @@ var diffIssuerValues = []string{
 	"https://256.1.1.1/a",
 }
 
+// diffIssuerValuesFor is the issuer dictionary of g's version. Core 0.1 keeps
+// diffIssuerValues exactly; the 0.2 grammar of Core 0.2 and 0.3 adds every
+// value of the committed identifier cases (both sides of each boundary).
+func diffIssuerValuesFor(g caseGen) []string {
+	if g.protocol == Protocol {
+		return diffIssuerValues
+	}
+	return diffIssuerValues0203(g)
+}
+
 // diffTimestampValues probes issued_at/not_before/expires_at-shaped members:
 // valid neighbours of fixedNow plus the malformed variants the spec lists.
 var diffTimestampValues = []string{
@@ -403,9 +413,9 @@ type diffMemberSpec struct {
 	values []any
 }
 
-func diffHeaderMembers(kind string, issuerValues []any) []diffMemberSpec {
+func diffHeaderMembers(g caseGen, kind string, issuerValues []any) []diffMemberSpec {
 	return []diffMemberSpec{
-		{"protocol", diffStrings(diffEnumValues(Protocol, "https://ifandonlyif.io/apostille/spec/0.2"))},
+		{"protocol", diffStrings(diffEnumValues(g.protocol, g.otherProtocol()))},
 		{"kind", diffStrings(diffEnumValues(kind, kind+"2"))},
 		{"issuer", issuerValues},
 		{"issuer_key_id", diffStrings(diffDigestKeyIDValues)},
@@ -413,8 +423,8 @@ func diffHeaderMembers(kind string, issuerValues []any) []diffMemberSpec {
 	}
 }
 
-func diffStatementMembers() []diffMemberSpec {
-	return append(diffHeaderMembers(KindStatement, nil),
+func diffStatementMembers(g caseGen) []diffMemberSpec {
+	return append(diffHeaderMembers(g, KindStatement, nil),
 		diffMemberSpec{"agent_id", diffStrings(diffUUIDValues)},
 		diffMemberSpec{"delegation_sha256", diffStrings(diffDigestKeyIDValues)},
 		diffMemberSpec{"artifact_sha256", diffStrings(diffDigestKeyIDValues)},
@@ -424,30 +434,30 @@ func diffStatementMembers() []diffMemberSpec {
 	)
 }
 
-func diffDelegationMembers(agentPublicKey string) []diffMemberSpec {
-	return append(diffHeaderMembers(KindDelegation, nil),
+func diffDelegationMembers(g caseGen, agentPublicKey string) []diffMemberSpec {
+	return append(diffHeaderMembers(g, KindDelegation, nil),
 		diffMemberSpec{"agent_id", diffStrings(diffUUIDValues)},
 		diffMemberSpec{"agent_key_id", diffStrings(diffDigestKeyIDValues)},
 		diffMemberSpec{"agent_public_key", diffAgentPublicKeyValues(agentPublicKey)},
-		diffMemberSpec{"service_audience", diffStrings(diffIssuerValues)},
+		diffMemberSpec{"service_audience", diffStrings(diffIssuerValuesFor(g))},
 		diffMemberSpec{"not_before", diffStrings(diffTimestampValues)},
 		diffMemberSpec{"expires_at", diffStrings(diffTimestampValues)},
 		diffMemberSpec{"scopes", diffScopesValues},
 	)
 }
 
-func diffAcceptanceMembers() []diffMemberSpec {
-	return append(diffHeaderMembers(KindAcceptance, nil),
+func diffAcceptanceMembers(g caseGen) []diffMemberSpec {
+	return append(diffHeaderMembers(g, KindAcceptance, nil),
 		diffMemberSpec{"agent_id", diffStrings(diffUUIDValues)},
 		diffMemberSpec{"delegation_sha256", diffStrings(diffDigestKeyIDValues)},
 	)
 }
 
-func diffGrantMembers() []diffMemberSpec {
-	return append(diffHeaderMembers(KindGrant, nil),
+func diffGrantMembers(g caseGen) []diffMemberSpec {
+	return append(diffHeaderMembers(g, KindGrant, nil),
 		diffMemberSpec{"statement_sha256", diffStrings(diffDigestKeyIDValues)},
 		diffMemberSpec{"delegation_sha256", diffStrings(diffDigestKeyIDValues)},
-		diffMemberSpec{"service_audience", diffStrings(diffIssuerValues)},
+		diffMemberSpec{"service_audience", diffStrings(diffIssuerValuesFor(g))},
 		diffMemberSpec{"visibility", diffStrings(diffEnumValues("private", "secret"))},
 		diffMemberSpec{"purpose", diffStrings(diffEnumValues("issue_origin_certificate", "issue_other_certificate"))},
 		diffMemberSpec{"expires_at", diffStrings(diffTimestampValues)},
@@ -455,8 +465,8 @@ func diffGrantMembers() []diffMemberSpec {
 	)
 }
 
-func diffCertificateMembers() []diffMemberSpec {
-	return append(diffHeaderMembers(KindCertificate, diffStrings(diffIssuerValues)),
+func diffCertificateMembers(g caseGen) []diffMemberSpec {
+	return append(diffHeaderMembers(g, KindCertificate, diffStrings(diffIssuerValuesFor(g))),
 		diffMemberSpec{"certificate_id", diffStrings(diffUUIDValues)},
 		diffMemberSpec{"statement_sha256", diffStrings(diffDigestKeyIDValues)},
 		diffMemberSpec{"delegation_sha256", diffStrings(diffDigestKeyIDValues)},
@@ -485,9 +495,9 @@ type diffKindFixture struct {
 // producer-only self-issued certificate built like
 // bundleCertificateIssuerSyntaxCases), so the corpus starts from bytes this
 // codebase already trusts.
-func diffKindFixtures(t *testing.T) []diffKindFixture {
+func diffKindFixtures(t *testing.T, g caseGen) []diffKindFixture {
 	t.Helper()
-	b, admin, agent, _ := gen01.fixedBundle(t)
+	b, admin, agent, _ := g.fixedBundle(t)
 
 	var st Statement
 	if err := DecodePayload(b.Statement, KindStatement, &st); err != nil {
@@ -510,17 +520,17 @@ func diffKindFixtures(t *testing.T) []diffKindFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	grant := PublicationGrant{Header: NewHeader(KindGrant, KeyIdentity(admin.KeyID()), admin, fixedNow), StatementSHA256: sh, DelegationSHA256: dh, ServiceAudience: exampleIssuer, Visibility: "private", Purpose: "issue_origin_certificate", ExpiresAt: fixedNow.Add(5 * time.Minute).Format(TimestampLayout), Nonce: nonceID}
+	grant := PublicationGrant{Header: g.header(KindGrant, KeyIdentity(admin.KeyID()), admin, fixedNow), StatementSHA256: sh, DelegationSHA256: dh, ServiceAudience: exampleIssuer, Visibility: "private", Purpose: "issue_origin_certificate", ExpiresAt: fixedNow.Add(5 * time.Minute).Format(TimestampLayout), Nonce: nonceID}
 
-	pOnly, signer4 := gen01.producerOnly(t)
-	cert := gen01.certFor(t, pOnly, signer4, "urn:example:private-issuer", fixedNow, fixedNow.Add(24*time.Hour), "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")
+	pOnly, signer4 := g.producerOnly(t)
+	cert := g.certFor(t, pOnly, signer4, "urn:example:private-issuer", fixedNow, fixedNow.Add(24*time.Hour), "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")
 
 	return []diffKindFixture{
-		{KindStatement, diffToMap(t, st), agent, diffStatementMembers()},
-		{KindDelegation, diffToMap(t, deleg), admin, diffDelegationMembers(agent.PublicKey())},
-		{KindAcceptance, diffToMap(t, acc), agent, diffAcceptanceMembers()},
-		{KindGrant, diffToMap(t, grant), admin, diffGrantMembers()},
-		{KindCertificate, diffToMap(t, cert), signer4, diffCertificateMembers()},
+		{KindStatement, diffToMap(t, st), agent, diffStatementMembers(g)},
+		{KindDelegation, diffToMap(t, deleg), admin, diffDelegationMembers(g, agent.PublicKey())},
+		{KindAcceptance, diffToMap(t, acc), agent, diffAcceptanceMembers(g)},
+		{KindGrant, diffToMap(t, grant), admin, diffGrantMembers(g)},
+		{KindCertificate, diffToMap(t, cert), signer4, diffCertificateMembers(g)},
 	}
 }
 
@@ -535,6 +545,7 @@ type differentialItem struct {
 // would otherwise collide (e.g. two dictionary values that truncate to the
 // same label text) by appending #2, #3, ...
 type differentialCorpus struct {
+	g          caseGen
 	items      []differentialItem
 	labelCount map[string]int
 }
@@ -556,7 +567,7 @@ func (c *differentialCorpus) addSigned(t *testing.T, label, kind string, signer 
 	if err != nil {
 		t.Fatalf("%s: Canonical: %v", label, err)
 	}
-	c.add(label, kind, signRaw(t, signer, kind, raw))
+	c.add(label, kind, c.g.signRaw(t, signer, kind, raw))
 }
 
 // ---------------------------------------------------------------------------
@@ -569,10 +580,10 @@ func (c *differentialCorpus) addSigned(t *testing.T, label, kind string, signer 
 // and one item with an unknown "zzz" member added. Every item is re-signed
 // over its exact mutated bytes, so the signature is always valid and only
 // payload validation decides acceptance.
-func diffPayloadSubstitutionItems(t *testing.T) []differentialItem {
+func diffPayloadSubstitutionItems(t *testing.T, g caseGen) []differentialItem {
 	t.Helper()
-	var corpus differentialCorpus
-	for _, kf := range diffKindFixtures(t) {
+	corpus := differentialCorpus{g: g}
+	for _, kf := range diffKindFixtures(t, g) {
 		corpus.addSigned(t, kf.kind+"/baseline", kf.kind, kf.signer, diffCloneMap(kf.base))
 
 		for _, member := range kf.members {
@@ -606,15 +617,15 @@ func diffPayloadSubstitutionItems(t *testing.T) []differentialItem {
 // opposed to payload-content mutations) on an otherwise-valid envelope per
 // kind: non-canonical base64url, padding, the standard base64 alphabet,
 // key_id case, kind identity, payload_sha256 case, and algorithm spelling.
-func diffEnvelopeMutationItems(t *testing.T) []differentialItem {
+func diffEnvelopeMutationItems(t *testing.T, g caseGen) []differentialItem {
 	t.Helper()
-	var corpus differentialCorpus
-	for _, kf := range diffKindFixtures(t) {
+	corpus := differentialCorpus{g: g}
+	for _, kf := range diffKindFixtures(t, g) {
 		payload, err := Canonical(kf.base)
 		if err != nil {
 			t.Fatalf("%s: Canonical: %v", kf.kind, err)
 		}
-		base := signRaw(t, kf.signer, kf.kind, payload)
+		base := g.signRaw(t, kf.signer, kf.kind, payload)
 
 		if flipped, ok := diffFlipTrailingBits(base.Payload); ok {
 			env := base
@@ -687,16 +698,52 @@ func diffEnvelopeMutationItems(t *testing.T) []differentialItem {
 			corpus.add(kf.kind+"/envelope.payload_sha256=uppercase", kf.kind, env)
 		}
 
-		for _, tc := range []struct{ suffix, value string }{
-			{"lowercase", "ed25519"},
-			{"EdDSA", "EdDSA"},
-		} {
+		for _, tc := range diffAlgorithmSpellings(g) {
 			env := base
 			env.Signature.Algorithm = tc.value
 			corpus.add(fmt.Sprintf("%s/envelope.signature.algorithm=%s", kf.kind, tc.suffix), kf.kind, env)
 		}
+
+		// Core 0.2 and 0.3 fix exact key and signature sizes, so each side of a
+		// size boundary gets its own item; the 0.1 corpus is not extended.
+		if g.protocol != Protocol {
+			for _, tc := range []struct {
+				suffix string
+				edit   func(env *Envelope)
+			}{
+				{"public_key=one-char-short", func(env *Envelope) {
+					env.Signature.PublicKey = env.Signature.PublicKey[:len(env.Signature.PublicKey)-1]
+				}},
+				{"public_key=one-char-long", func(env *Envelope) { env.Signature.PublicKey += "A" }},
+				{"value=one-char-short", func(env *Envelope) { env.Signature.Value = env.Signature.Value[:len(env.Signature.Value)-1] }},
+				{"value=one-char-long", func(env *Envelope) { env.Signature.Value += "A" }},
+				{"value=empty", func(env *Envelope) { env.Signature.Value = "" }},
+				{"public_key=empty", func(env *Envelope) { env.Signature.PublicKey = "" }},
+			} {
+				env := base
+				tc.edit(&env)
+				corpus.add(fmt.Sprintf("%s/envelope.signature.%s", kf.kind, tc.suffix), kf.kind, env)
+			}
+		}
 	}
 	return corpus.items
+}
+
+// diffAlgorithmSpellings are wrong spellings of the signature.algorithm value
+// of g's profile.
+func diffAlgorithmSpellings(g caseGen) []struct{ suffix, value string } {
+	if g.prof.algorithm == Algorithm03 {
+		return []struct{ suffix, value string }{
+			{"lowercase", "ml-dsa-65"},
+			{"no-hyphens", "MLDSA65"},
+			{"trailing-space", "ML-DSA-65 "},
+			{"ed25519", "Ed25519"},
+		}
+	}
+	return []struct{ suffix, value string }{
+		{"lowercase", "ed25519"},
+		{"EdDSA", "EdDSA"},
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -737,11 +784,11 @@ var diffEd25519EdgeCaseLabels = []string{
 // the normal sense) origin-statement envelope whose issuer/issuer_key_id
 // match pubKey's own fingerprint, so the fingerprint and signed-key-ID
 // checks pass and only the Ed25519 verification math decides acceptance.
-func diffOddKeyStatement(t *testing.T, pubKey, signature []byte) Envelope {
+func diffOddKeyStatement(t *testing.T, g caseGen, pubKey, signature []byte) Envelope {
 	t.Helper()
 	keyID := Fingerprint(pubKey)
 	st := Statement{
-		Header:            Header{Protocol: Protocol, Kind: KindStatement, Issuer: KeyIdentity(keyID), IssuerKeyID: keyID, IssuedAt: fixedNow.Format(TimestampLayout)},
+		Header:            Header{Protocol: g.protocol, Kind: KindStatement, Issuer: KeyIdentity(keyID), IssuerKeyID: keyID, IssuedAt: fixedNow.Format(TimestampLayout)},
 		AgentID:           agentID,
 		ArtifactSHA256:    Hash(nil),
 		ArtifactSize:      "0",
@@ -753,11 +800,11 @@ func diffOddKeyStatement(t *testing.T, pubKey, signature []byte) Envelope {
 		t.Fatal(err)
 	}
 	return Envelope{
-		Protocol:      Protocol,
+		Protocol:      g.protocol,
 		Kind:          KindStatement,
 		Payload:       rawURL.EncodeToString(payload),
 		PayloadSHA256: Hash(payload),
-		Signature:     Signature{Algorithm: Algorithm, KeyID: keyID, PublicKey: rawURL.EncodeToString(pubKey), Value: rawURL.EncodeToString(signature)},
+		Signature:     Signature{Algorithm: g.prof.algorithm, KeyID: keyID, PublicKey: rawURL.EncodeToString(pubKey), Value: rawURL.EncodeToString(signature)},
 	}
 }
 
@@ -770,22 +817,22 @@ func diffOddKeyStatement(t *testing.T, pubKey, signature []byte) Envelope {
 // shared ed25519GroupOrder/reverseBytes; and R replaced with identity, S=0,
 // which should NOT verify against a real full-order key except with
 // negligible probability).
-func diffEd25519EdgeCaseItems(t *testing.T) []differentialItem {
+func diffEd25519EdgeCaseItems(t *testing.T, g caseGen) []differentialItem {
 	t.Helper()
-	var corpus differentialCorpus
+	corpus := differentialCorpus{g: g}
 
 	identitySig := append(append([]byte{}, diffIdentityKey...), make([]byte, 32)...)
 
-	corpus.add(diffEd25519EdgeCaseLabels[0], KindStatement, diffOddKeyStatement(t, diffIdentityKey, identitySig))
-	corpus.add(diffEd25519EdgeCaseLabels[1], KindStatement, diffOddKeyStatement(t, diffNonCanonicalIdentityKey, identitySig))
-	corpus.add(diffEd25519EdgeCaseLabels[2], KindStatement, diffOddKeyStatement(t, diffXSignIdentityKey, identitySig))
-	corpus.add(diffEd25519EdgeCaseLabels[3], KindStatement, diffOddKeyStatement(t, diffOrder2Key, identitySig))
+	corpus.add(diffEd25519EdgeCaseLabels[0], KindStatement, diffOddKeyStatement(t, g, diffIdentityKey, identitySig))
+	corpus.add(diffEd25519EdgeCaseLabels[1], KindStatement, diffOddKeyStatement(t, g, diffNonCanonicalIdentityKey, identitySig))
+	corpus.add(diffEd25519EdgeCaseLabels[2], KindStatement, diffOddKeyStatement(t, g, diffXSignIdentityKey, identitySig))
+	corpus.add(diffEd25519EdgeCaseLabels[3], KindStatement, diffOddKeyStatement(t, g, diffOrder2Key, identitySig))
 	// For an order-2 key, S=0 verifies with R=identity when the challenge
 	// scalar is even and with R=key when it is odd, so both forms are kept.
 	order2Sig := append(append([]byte{}, diffOrder2Key...), make([]byte, 32)...)
-	corpus.add(diffEd25519EdgeCaseLabels[4], KindStatement, diffOddKeyStatement(t, diffOrder2Key, order2Sig))
+	corpus.add(diffEd25519EdgeCaseLabels[4], KindStatement, diffOddKeyStatement(t, g, diffOrder2Key, order2Sig))
 
-	genuineBundle, genuineSigner := gen01.producerOnly(t)
+	genuineBundle, genuineSigner := g.producerOnly(t)
 	genuineSig, err := rawURL.DecodeString(genuineBundle.Statement.Signature.Value)
 	if err != nil {
 		t.Fatal(err)
@@ -826,7 +873,7 @@ func diffEd25519EdgeCaseItems(t *testing.T) []differentialItem {
 	if err != nil {
 		t.Fatal(err)
 	}
-	message := signingInput(KindStatement, payload)
+	message := g.prof.signingInput(KindStatement, payload)
 	kDigest := sha512.Sum512(append(append(append([]byte{}, diffIdentityKey...), pub...), message...))
 	k := new(big.Int).Mod(new(big.Int).SetBytes(reverseBytes(kDigest[:])), order)
 	scalarS := new(big.Int).Mod(new(big.Int).Mul(k, a), order)
@@ -920,10 +967,10 @@ func TestGoJSDifferential(t *testing.T) {
 	}
 
 	var items []differentialItem
-	items = append(items, diffPayloadSubstitutionItems(t)...)
-	items = append(items, diffEnvelopeMutationItems(t)...)
+	items = append(items, diffPayloadSubstitutionItems(t, gen01)...)
+	items = append(items, diffEnvelopeMutationItems(t, gen01)...)
 	edStart := len(items)
-	items = append(items, diffEd25519EdgeCaseItems(t)...)
+	items = append(items, diffEd25519EdgeCaseItems(t, gen01)...)
 
 	labels := make([]string, len(items))
 	for i, it := range items {

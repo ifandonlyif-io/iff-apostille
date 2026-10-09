@@ -19,7 +19,7 @@ possible so the upstream copy stays a file copy.
 | 0 | Land the 0.1 conformance work this plan builds on | ✅ DONE | On `main` and released as `v0.1.0-alpha.1` (2026-09-22); the hosted service consumes that tag, so nothing is upstreamed by copy any more |
 | 1 | Normative `spec/core-0.2.md` + `web/apostille-0.2.schema.json` | ✅ DONE | Accepted 2026-09-22 after review (no findings); normative for 0.2 artifacts, no implementation yet |
 | 2 | Go: profiles, identifier grammar, strict Ed25519, no-mixing, explicit-version signing, 0.2 vectors | ✅ DONE | Landed 2026-10-09; see Phase 2 outcome. JS side and the 0.2 differential are Phase 3 |
-| 3 | JS: same rules, vendored curve library, consumers for 0.2 vectors, Go/JS differential at 0.2 | ⬜ pending | Needs Phase 2 vectors; user confirms the vendored library |
+| 3 | JS: same rules, vendored curve library, consumers for 0.2 vectors, Go/JS differential at 0.2 | ✅ DONE | Landed 2026-10-09 with Core 0.3 Phase 3; `@noble/curves` 2.4.0 confirmed by the user; 0.2 differential table empty |
 | 4 | CLI, browser verifier UI, docs, notices | ⬜ pending | Needs Phases 2 and 3; new UI strings need reviewed translations |
 | 5 | Hosted service and API client (lives in `iff-trust-oracle`) | ⬜ pending | External to this repository; also carries the login/registration key check |
 | 6 | Default signing version switches to 0.2 | ⬜ pending | Gated on Phase 5 deployed, registrations migrated, announced date |
@@ -430,7 +430,35 @@ approval; all three consumers agree on every 0.2 case; `npm pack --dry-run`
 lists the vendored file and no case file; CSP unchanged; `make check` green with
 no skipped interop test.
 
-Outcome: (append when landed)
+Outcome (2026-10-09), landed together with Core 0.3 Phase 3:
+
+- **Vendored library.** `@noble/curves` 2.4.0 with `@noble/hashes` 2.4.0, under
+  `web/vendor/noble/`, produced by `scripts/vendor-noble.mjs`. The script checks
+  the pinned `dist.integrity`, the import closure, and that only the bare
+  `@noble/…` specifiers are rewritten. Re-running it reproduces identical bytes.
+  `NOTICES.md` records the upstream and vendored SHA-256 of every file. All
+  vendored files are in the three asset lists, and CSP is unchanged.
+- **Strict Ed25519** (`web/apostille-ed25519.mjs`).
+  - Decoding is permissive, and the module re-encodes and compares the bytes.
+  - It rejects the identity, tests the subgroup as `[L-1]P + P`, and computes
+    the equation over the library's points. WebCrypto is not on this path.
+  - Tests show that the check agrees with the library's `isTorsionFree()`, and
+    that the mixed-order vector keys pass Node's cofactorless WebCrypto, so
+    only the subgroup rule rejects them.
+- **Identifiers and versions.** A byte-level identifier validator
+  (`web/apostille-identifier.mjs`), a profile table (`web/apostille-profile.mjs`),
+  no-mixing, `acceptedProtocols`, and explicit-version signing.
+- **Go/JS differential at 0.2.** 2249 items with an empty table; Go and JS each
+  accept 713. Disabling the JS subgroup test produces 9 divergences, which
+  shows the corpus catches it. The 0.1 tables are unchanged at 48 and 6.
+- **Interop at 0.2.** The Go vector verifies in JS, and a JS-signed bundle is
+  verified and issued in Go and then verified in JS.
+- **Tests.** Both JS case consumers run the 0.2 files. `make check` passes with
+  no skips. `npm pack ./sdk/apostille-js --dry-run` lists the vendored files and
+  no case file.
+- **Deviation.** A 0.1 key or signature that has the wrong length and is also
+  malformed now reports "Invalid key or signature encoding." instead of
+  "Invalid base64url.". Verdicts are unchanged.
 
 ### Phase 4 — CLI, browser verifier UI, documentation
 

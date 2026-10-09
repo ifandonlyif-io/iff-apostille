@@ -131,7 +131,8 @@ async function signRequest(payload, signer) {
 }
 
 export async function createERC8004Request(admin, registration, identity, audience, now = Date) {
-    need(admin && KEY_ID.test(admin.keyID) && typeof admin.publicKey === "string" && admin.key, "Invalid administrator signer.");
+    // The detached ERC-8004 profile is Ed25519 only and does not cover Core 0.3 registrations.
+    need(admin && KEY_ID.test(admin.keyID) && typeof admin.publicKey === "string" && admin.key && (admin.algorithm ?? "Ed25519") === "Ed25519", "Invalid administrator signer.");
     need(validIssuer(audience), "Invalid ERC-8004 service audience.");
     const at = instant(now);
     const delegation = await verifyRegistration(registration, audience, at);

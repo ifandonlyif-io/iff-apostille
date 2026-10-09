@@ -798,3 +798,61 @@ test("offline ERC-8004 UI reports binding integrity without claiming artifact or
     assert.equal(ui.node("result-note").textContent, message("en", "erc8004Boundary"));
     assert.equal(ui.requests.length, 0, "verifying the detached proof must not fetch provider evidence or keys");
 });
+
+// The three fixed asset lists (the offline verifier, the SDK build and this test) must name every
+// module the page can import, including the vendored Noble files that Core 0.2 and 0.3 need under
+// `script-src 'self'`; a missing file is a page that fails to load only in the packaged copy.
+async function relativeImports(file) {
+    const source = await readFile(file, "utf8");
+    return [...source.matchAll(/^(?:import|export)\b[^;]*?\bfrom\s*["'](\.[^"']+)["']/gm)].map((match) => join(dirname(file), match[1].split("?")[0]));
+}
+async function closure(entry, seen = new Set()) {
+    if (seen.has(entry)) return seen;
+    seen.add(entry);
+    for (const next of await relativeImports(entry)) await closure(next, seen);
+    return seen;
+}
+async function vendoredTree() {
+    const { readdir } = await import("node:fs/promises");
+    const out = [];
+    for (const entry of await readdir(join(here, "vendor/noble"), { recursive: true, withFileTypes: true })) {
+        if (entry.isFile()) out.push(join(entry.parentPath, entry.name));
+    }
+    return out.map((path) => path.slice(here.length + 1)).sort();
+}
+
+test("asset lists name every module and vendored file the page imports, and CSP stays script-src 'self'", async () => {
+    assert.match(html, /Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self';/);
+    assert.doesNotMatch(html, /script-src[^;]*(unsafe|https?:)/);
+    const verifier = await readFile(join(here, "../scripts/build-verifier.py"), "utf8");
+    const sdkBuild = await readFile(join(here, "../sdk/apostille-js/scripts/build.mjs"), "utf8");
+    const quoted = (text) => new Set([...text.matchAll(/"([^"\s]+\.(?:mjs|js|json|css))"/g)].map((match) => match[1]));
+    const verifierAssets = quoted(verifier), sdkAssets = quoted(sdkBuild);
+    const vendored = (await vendoredTree()).map((path) => path.replace(/^vendor\/noble\//, ""));
+    assert.equal(vendored.length, 19, "18 upstream files plus the module marker");
+    // Every file the page can load (static imports, transitively) is an asset of the offline verifier.
+    for (const path of await closure(join(here, "apostille-page.mjs"))) {
+        const relative = path.slice(here.length + 1);
+        assert.ok(verifierAssets.has(relative), `build-verifier.py does not package ${relative}`);
+    }
+    for (const name of vendored) {
+        assert.ok(verifierAssets.has(`vendor/noble/${name}`), `build-verifier.py does not package vendor/noble/${name}`);
+        assert.ok(sdkAssets.has(name), `the SDK build does not copy vendor/noble/${name}`);
+    }
+    for (const schema of ["apostille-0.1.schema.json", "apostille-0.2.schema.json", "apostille-0.3.schema.json"]) assert.ok(verifierAssets.has(schema), schema);
+    // The SDK copies the core modules and everything they import.
+    for (const entry of ["apostille-core.mjs", "apostille-erc8004.mjs"]) {
+        for (const path of await closure(join(here, entry))) {
+            const relative = path.slice(here.length + 1);
+            const copied = relative.startsWith("vendor/noble/") ? sdkAssets.has(relative.slice("vendor/noble/".length)) : sdkAssets.has(relative) || sdkBuild.includes(`"web/${relative}"`);
+            assert.ok(copied, `the SDK build does not copy ${relative}`);
+        }
+    }
+    // No case file reaches the verifier archive or the package: the SDK build copies them into git-ignored
+    // spec/ for its tests only, and package.json "files" lists spec files one by one.
+    for (const name of verifierAssets) assert.doesNotMatch(name, /cases/);
+    assert.doesNotMatch(verifier, /-cases\.json|vector-cases|hedged|wycheproof/);
+    const manifest = JSON.parse(await readFile(join(here, "../sdk/apostille-js/package.json"), "utf8"));
+    assert.ok(manifest.files.includes("spec/schema-0.3.json") && manifest.files.includes("dist/"));
+    assert.deepEqual(manifest.files.filter((name) => /cases|hedged|wycheproof/.test(name)), []);
+});

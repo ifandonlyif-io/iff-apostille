@@ -19,7 +19,7 @@ the acceptance criteria before the status table changes.
 | --- | --- | --- | --- |
 | 1 | `spec/core-0.3.md` + `web/apostille-0.3.schema.json` | ✅ DONE | Accepted 2026-10-09; the schema is the 0.2 schema with 16 lines changed (`$id`, title, protocol constants, algorithm, key and signature lengths) |
 | 2 | Go: 0.3 profile, ML-DSA-65 signer and verifier, 0.3 key files, login 0.3 helpers, 0.3 vectors | ✅ DONE | Landed 2026-10-09; see Phase 2 outcome |
-| 3 | JS: vendored `@noble/post-quantum`, 0.3 verify and sign, consumers for 0.3 vectors, Go/JS differential at 0.3 | ⬜ pending | Lands with 0.2 Phase 3 |
+| 3 | JS: vendored `@noble/post-quantum`, 0.3 verify and sign, consumers for 0.3 vectors, Go/JS differential at 0.3 | ✅ DONE | Landed 2026-10-09 with 0.2 Phase 3; 0.3 differential table empty |
 | 4 | CLI, browser verifier and signing UI (with the signing disclosure), docs, notices | ⬜ pending | New UI strings need reviewed translations in four locales |
 | 5 | Release tags for the root and nested modules | ⬜ pending | The user decides the tag names |
 | 6 | Hosted service and API client (`iff-trust-oracle`) | ⬜ pending | External; ML-DSA issuer key provisioned by the owner |
@@ -291,6 +291,32 @@ Deliverables:
 
 Acceptance: all consumers green with no skips, and Go and JS agree on every 0.3
 case.
+
+Outcome (2026-10-09):
+
+- **Vendored library.** `@noble/post-quantum` 0.7.1, ML-DSA only, vendored with
+  the 0.2 libraries (see the 0.2 plan's Phase 3 outcome).
+- **Module.** `web/apostille-mldsa.mjs` verifies with an explicit empty
+  context. A library exception counts as a rejection. Signing is hedged.
+- **Proofs.**
+  - Noble's keygen from a seed gives Go's public keys.
+  - Go's deterministic and hedged envelopes verify in JS, and JS reproduces Go's
+    deterministic signatures byte for byte.
+  - JS signatures verify in Go.
+  - Noble rejects all 13 Wycheproof cases and every constructed malformed,
+    HashML-DSA, non-empty-context and wrong-domain case. Each fails at the
+    signature check itself.
+  - An explicit empty context equals the default context.
+  - Two production signatures of one message differ.
+- **Key files and login.**
+  - `importKeyFile` and `generateKeyFile({ algorithm })` follow C3′.
+  - `signLogin03` and `verifyLogin03` are exported but not wired into the hosted
+    client.
+  - The `Signer` typing is now a union of the Ed25519 and ML-DSA-65 signers.
+- **Go/JS differential at 0.3.** 2270 items with an empty table; Go and JS each
+  accept 721.
+- **Shipped files.** The SDK ships `vectors-0.2.json`, `vectors-0.3.json` and
+  both schemas; the case files stay out of the package.
 
 ### Phase 4 — CLI, UI, docs
 
