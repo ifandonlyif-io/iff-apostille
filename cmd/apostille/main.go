@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -575,6 +576,8 @@ func (a application) verifyERC8004(ctx context.Context, args []string) error {
 	keyID := flags.String("key-id", "", "exact trusted issuer key fingerprint")
 	at := flags.String("at", "", "evaluation time in RFC3339; defaults to current time")
 	requireTrusted := flags.Bool("require-trusted", false, "fail unless issuer/key pin matches and binding is within validity")
+	var accepted protocolList
+	flags.Var(&accepted, "accept-protocol", "accept only bindings over this Core version (0.1 or 0.3); repeatable; default accepts both")
 	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
@@ -583,6 +586,10 @@ func (a application) verifyERC8004(ctx context.Context, args []string) error {
 	}
 	if *bindingPath == "" {
 		return errors.New("verify-erc8004 requires --binding")
+	}
+	acceptedProfiles, err := erc8004ProfilesFor(accepted)
+	if err != nil {
+		return err
 	}
 	if *requireTrusted && (*issuer == "" || *keyID == "") {
 		return errors.New("--require-trusted requires both --issuer and --key-id")
@@ -607,11 +614,14 @@ func (a application) verifyERC8004(ctx context.Context, args []string) error {
 		}{false, "verification_failed"})
 		return fmt.Errorf("verify ERC-8004 binding: %w", err)
 	}
-	if err := requireCore01("ERC-8004 binding profile", "binding delegation", document.Delegation.Protocol); err != nil {
-		return err
-	}
-	if err := requireCore01("ERC-8004 binding profile", "binding acceptance", document.Acceptance.Protocol); err != nil {
-		return err
+	// The root verifier binds the document's profile to the Core version of its
+	// delegation and acceptance; the caller may narrow the accepted profiles.
+	if !slices.Contains(acceptedProfiles, document.Protocol) {
+		_ = writeJSON(a.stdout, struct {
+			Valid bool   `json:"valid"`
+			Error string `json:"error"`
+		}{false, "protocol_not_accepted"})
+		return errors.New("verify ERC-8004 binding: binding profile is not accepted by --accept-protocol")
 	}
 	trustedKeys := []string(nil)
 	if *keyID != "" {

@@ -2,11 +2,11 @@
 
 [English](README.md) · [日本語](README.ja.md) · [繁體中文](README.zh-hant.md) · [简体中文](README.zh-hans.md)
 
-[網站](https://ifandonlyif.io/zh-hant/apostille) · [下載與安裝](https://ifandonlyif.io/zh-hant/apostille/downloads) · [Alpha 發佈](https://github.com/ifandonlyif-io/iff-apostille/releases/tag/v0.3.0-alpha.1)
+[網站](https://ifandonlyif.io/zh-hant/apostille) · [下載與安裝](https://ifandonlyif.io/zh-hant/apostille/downloads) · [Alpha 發佈](https://github.com/ifandonlyif-io/iff-apostille/releases/tag/v0.4.0-alpha.1)
 
 為 agent 產物提供可攜、與 issuer 無關的簽章。Agent 簽署檔案 manifest，管理員授權其金鑰，issuer 記錄已執行的檢查。收件者可在本機查驗 bundle，不需要 IFF 帳號或網際網路連線。你可以使用 SDK，也可以依公開規格與相容性向量自行實作。
 
-**目前為 Alpha。** Core protocol `0.1`、Go 模組版本 `v0.3.0-alpha.1` 與 SDK 套件版本 `0.1.0-alpha.1` 是不同的版本命名空間。Go root 模組（`apostille`、`apostille/client`、`util`）已發佈 `v0.3.0-alpha.1`；CLI 與 ZK 模組的標籤分別為 `cmd/apostille/v0.3.0-alpha.1`、`apostille/zkbudget/v0.3.0-alpha.1`。使用這些模組需要 Go 1.27。尚未發佈 npm 套件或預編譯 CLI 執行檔。Core 0.2 與 Core 0.3 已在 `v0.3.0-alpha.1` 中發佈，該版本包含 Core 0.1、0.2 與 0.3；詳見[路線圖](#roadmap)。
+**目前為 Alpha。** Core protocol `0.1`、Go 模組版本 `v0.4.0-alpha.1` 與 SDK 套件版本 `0.1.0-alpha.1` 是不同的版本命名空間。Go root 模組（`apostille`、`apostille/client`、`util`）已發佈 `v0.4.0-alpha.1`；CLI 與 ZK 模組的標籤分別為 `cmd/apostille/v0.4.0-alpha.1`、`apostille/zkbudget/v0.4.0-alpha.1`。使用這些模組需要 Go 1.27。尚未發佈 npm 套件或預編譯 CLI 執行檔。Core 0.2 與 Core 0.3 已在 `v0.4.0-alpha.1` 中發佈，該版本包含 Core 0.1、0.2 與 0.3；詳見[路線圖](#roadmap)。
 
 此版本按 Core 版本各附相容性案例檔（0.1 有 215 個、0.2 有 647 個、0.3 有 676 個），並包含在 0.2 與 0.3 上無差異的 Go/JavaScript differential 測試與 fuzz 測試。IFF 託管服務使用固定版本的公開 Go 模組。
 
@@ -15,17 +15,17 @@
 - **收到 bundle 的收件者**：使用託管服務或本 repo 提供的瀏覽器查驗器，也可使用本機 CLI。兩者的查驗都不需要 IFF 帳號、金鑰查詢或網路連線。若已有 Go 工具鏈：
 
   ```sh
-  go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.3.0-alpha.1
+  go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.4.0-alpha.1
   ```
 
   將 `GOBIN`（未設定時為 `GOPATH/bin`）加入 `PATH`。依[CLI 查驗指引](docs/apostille/CLI.md)指定你獨立選定的 issuer/key pin；若信任條件不符時必須讓指令失敗，請加上 `--require-trusted`。
 - **Go 開發者**：加入已發佈的模組。
 
   ```sh
-  go get github.com/ifandonlyif-io/iff-apostille@v0.3.0-alpha.1
+  go get github.com/ifandonlyif-io/iff-apostille@v0.4.0-alpha.1
   ```
 
-  API 參考：[pkg.go.dev](https://pkg.go.dev/github.com/ifandonlyif-io/iff-apostille@v0.3.0-alpha.1/apostille)。整合指引：[docs/apostille/SDK.md](docs/apostille/SDK.md)。
+  API 參考：[pkg.go.dev](https://pkg.go.dev/github.com/ifandonlyif-io/iff-apostille@v0.4.0-alpha.1/apostille)。整合指引：[docs/apostille/SDK.md](docs/apostille/SDK.md)。
 - **JavaScript 開發者**：依下方步驟，從這份 checkout 打包 SDK；registry 發佈另行規劃。
 - **審查者與獨立實作者**：從規格、schema、相容性案例及 GitHub 標籤原始碼開始。
 
@@ -68,7 +68,7 @@ npm pack ./sdk/apostille-js --pack-destination ./dist
 
 ## 路線圖
 
-Core 0.2（[規格](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）加入明確的識別字文法、嚴格 Ed25519 查驗與版本命名空間。Core 0.3（[規格](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）沿用該文法，並以 ML-DSA-65（FIPS 204）簽署。Go 與 JavaScript 參考實作、向量與相容性案例都在此原始碼樹中，並已在 `v0.3.0-alpha.1` 發佈；瀏覽器查驗器可查驗三個版本，CLI 也已支援（`--protocol 0.1|0.2|0.3`、`keygen --algorithm ml-dsa-65`、`verify --accept-protocol`）。自 `v0.4.0-alpha.1`（合併後打標籤）起，新金鑰預設為 ML-DSA-65（Core 0.3）：`keygen`、Go 的不帶版本簽署輔助函式、JavaScript SDK 與瀏覽器頁面都依所持金鑰自身的版本簽署（Ed25519 金鑰仍簽 Core 0.1，位元組完全一致）。Ed25519 與 Core 0.1 仍支援現有金鑰、查驗與明確選擇；Core 0.2 為明確選項。託管服務簽發 Core 0.1 與 0.3（不簽發 0.2），詳見 [API.md](docs/apostille/API.md)。進度由 [0.2](docs/apostille/proposals/core-0.2-implementation-plan.md) 與 [0.3](docs/apostille/proposals/core-0.3-implementation-plan.md) 實作計畫追蹤。JS SDK 的 npm 發佈與預編譯 CLI 執行檔也在規劃中，均不屬於 `v0.3.0-alpha.1`。
+Core 0.2（[規格](docs/apostille/spec/core-0.2.md)、[schema](web/apostille-0.2.schema.json)）加入明確的識別字文法、嚴格 Ed25519 查驗與版本命名空間。Core 0.3（[規格](docs/apostille/spec/core-0.3.md)、[schema](web/apostille-0.3.schema.json)）沿用該文法，並以 ML-DSA-65（FIPS 204）簽署。Go 與 JavaScript 參考實作、向量與相容性案例都在此原始碼樹中，並已在 `v0.4.0-alpha.1` 發佈；瀏覽器查驗器可查驗三個版本，CLI 也已支援（`--protocol 0.1|0.2|0.3`、`keygen --algorithm ml-dsa-65`、`verify --accept-protocol`）。自 `v0.4.0-alpha.1`（合併後打標籤）起，新金鑰預設為 ML-DSA-65（Core 0.3）：`keygen`、Go 的不帶版本簽署輔助函式、JavaScript SDK 與瀏覽器頁面都依所持金鑰自身的版本簽署（Ed25519 金鑰仍簽 Core 0.1，位元組完全一致）。Ed25519 與 Core 0.1 仍支援現有金鑰、查驗與明確選擇；Core 0.2 為明確選項。託管服務簽發 Core 0.1 與 0.3（不簽發 0.2），詳見 [API.md](docs/apostille/API.md)。進度由 [0.2](docs/apostille/proposals/core-0.2-implementation-plan.md) 與 [0.3](docs/apostille/proposals/core-0.3-implementation-plan.md) 實作計畫追蹤。JS SDK 的 npm 發佈與預編譯 CLI 執行檔也在規劃中，均不屬於 `v0.4.0-alpha.1`。
 
 ## 查驗結果代表什麼
 

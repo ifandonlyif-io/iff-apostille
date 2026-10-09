@@ -6,7 +6,7 @@ New keys are ML-DSA-65 and signing follows the key file: an ML-DSA-65 key signs 
 Install the released module, or build it from the repository root:
 
 ```bash
-go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.3.0-alpha.1
+go install github.com/ifandonlyif-io/iff-apostille/cmd/apostille@v0.4.0-alpha.1
 # or, from a checkout:
 make apostille-build   # writes bin/apostille
 ```
@@ -92,7 +92,7 @@ A complete Core 0.3 flow:
 ./bin/apostille verify --offline --bundle bundle.json --artifact report.json --accept-protocol 0.3
 ```
 
-The commands below use the key files generated above and need no `--protocol`; with Ed25519 key files they sign Core 0.1 exactly as before. The ZK commands and `verify-erc8004` need Core 0.1 inputs and so Ed25519 key files.
+The commands below use the key files generated above and need no `--protocol`; with Ed25519 key files they sign Core 0.1 exactly as before. The ZK commands need Core 0.1 inputs and so Ed25519 key files.
 
 ## Register an agent
 
@@ -209,15 +209,22 @@ Exit codes are:
 
 ## Verify a detached ERC-8004 binding
 
-The detached `erc8004-binding` profile 0.1 is verified from a local document;
-this command never contacts an RPC, key directory, or hosted service. It does not
-alter Core 0.1 bundle verification. The profile, like the ZK budget profile, covers Core 0.1 only: `verify-erc8004` and the `zk-*` commands refuse a Core 0.2 or 0.3 registration, bundle or ML-DSA-65 key with a "profile covers Core 0.1 only" error.
+A detached `erc8004-binding` document is verified from a local file; this
+command never contacts an RPC, key directory, or hosted service. It accepts
+binding profile 0.1 (Core 0.1, Ed25519) and binding profile 0.3 (Core 0.3,
+ML-DSA-65), and refuses a document that mixes the two or carries a Core 0.2
+registration. `--accept-protocol 0.3` (repeatable) accepts only bindings over
+the named Core versions; use it to require post-quantum administrator and issuer
+signatures. The wallet owner's consent is secp256k1 in both profiles and is not
+post-quantum. The `zk-*` commands still cover Core 0.1 only and refuse Core 0.2
+or 0.3 inputs and ML-DSA-65 keys with a "profile covers Core 0.1 only" error.
 
 ```bash
 ./bin/apostille verify-erc8004 \
   --binding erc8004-binding.json \
   --issuer https://issuer.example/apostille \
   --key-id sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --accept-protocol 0.3 \
   --require-trusted
 ```
 

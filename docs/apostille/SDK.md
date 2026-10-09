@@ -310,8 +310,8 @@ The identifiers are `ERC8004Profile` and `ERC8004Profile03` (JS `ERC8004_PROTOCO
 document is ML-DSA-65 throughout except the wallet owner's secp256k1 consent, and never
 mixes with 0.1 material. `ERC8004Config` carries `Profiles` (`profiles`), which a
 service that predates 0.3 omits; hosted 0.3 support is deployment pending (see
-[API.md](API.md)). The `apostille verify-erc8004` CLI command still covers binding
-profile 0.1 only. The known-answer document is
+[API.md](API.md)). The `apostille verify-erc8004` CLI command (`cmd/apostille/v0.4.0-alpha.1`)
+verifies both profiles. The known-answer document is
 [`testdata/apostille/erc8004-binding-0.3.json`](../../testdata/apostille/erc8004-binding-0.3.json).
 
 `ERC8004Config()` calls the public `/erc8004/config` route without a bearer

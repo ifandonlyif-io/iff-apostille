@@ -421,7 +421,7 @@ tracked in `iff-trust-oracle` and has not happened.
   key file's natural version.
 - **Browser.** The key algorithm selects default to ML-DSA-65.
 - **Deliberately unchanged.** Verification of every version, Ed25519 keys, the
-  ZK budget profile and `verify-erc8004` in the CLI (Core 0.1 only), and hosted
+  ZK budget profile (Core 0.1 only), and hosted
   login for Ed25519 workspaces.
 
 ## User-input checklist
